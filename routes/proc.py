@@ -7,6 +7,7 @@ proc_router = APIRouter(
 
 @proc_router.get("/test")
 async def test(variable: str | None = None):
+    print("log1")
     if variable:
         return {"message": variable}
     else:
