@@ -1,0 +1,13 @@
+from fastapi import APIRouter
+
+proc_router = APIRouter(
+    prefix="/proc",
+    tags=["proc"],
+)
+
+@proc_router.get("/test")
+async def test(variable: str | None = None):
+    if variable:
+        return {"message": variable}
+    else:
+        return {"message": "test"}
