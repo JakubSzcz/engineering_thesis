@@ -16,5 +16,6 @@ app.include_router(api_router)
 
 # launch server
 if __name__ == "__main__":
+    print("haloooo")
     uvicorn.run("main:app", host="0.0.0.0", port=8080, reload=True)
 
