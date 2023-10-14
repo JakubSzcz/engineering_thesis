@@ -5,7 +5,6 @@ from fastapi import FastAPI
 from routes.admin import admin_router
 from routes.auth import auth_router
 from routes.api import api_router
-from routes.user import user_router
 
 
 app = FastAPI()
