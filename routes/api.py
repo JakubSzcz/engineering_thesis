@@ -15,9 +15,8 @@ async def request(client, url):
 
 async def task(url):
     async with httpx.AsyncClient() as client:
-        response = request(client, url)
-        result = await asyncio.gather(response)
-        print(result)
+        response = await request(client, url)
+        print(response)
 
 
 @api_router.get("/test")
