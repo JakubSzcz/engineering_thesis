@@ -22,7 +22,7 @@ async def task(url):
 
 @api_router.get("/test")
 async def test(param: str | None = None):
-    url = "http://127.0.0.1:8080/proc/test"
+    url = "http://0.0.0.0:8082/proc/test"
     if param:
         url = url + "?test=" + param
     await task(url)
