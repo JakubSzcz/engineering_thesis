@@ -2,15 +2,18 @@
 import uvicorn
 import httpx
 from fastapi import FastAPI
-import engineering_thesis.utilities.functions as fun
-import config as conf
+from engineering_thesis.postgres_db.PostgreSQL import PostgreSQL
 
-
+db = PostgreSQL()
 app = FastAPI()
 
 @app.get("/test")
 async def test():
-    return {"message": "test is working"}
+    db.connect(True)
+    db.execute("SELECT * FROM users")
+    user = db.get_query_results()[0]
+    db.commit()
+    return {"message": str(user)}
 
 # launch server
 if __name__ == "__main__":
