@@ -2,7 +2,7 @@
 import uvicorn
 import httpx
 from fastapi import FastAPI
-from engineering_thesis.postgres_db.PostgreSQL import PostgreSQL
+from postgres_db.PostgreSQL import PostgreSQL
 
 db = PostgreSQL()
 app = FastAPI()

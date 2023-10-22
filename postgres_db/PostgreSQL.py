@@ -1,7 +1,7 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-import engineering_thesis.config as config
+import config as config
 
 
 # postgres class
