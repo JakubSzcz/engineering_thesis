@@ -2,17 +2,18 @@
 from datetime import datetime, timezone
 import uvicorn
 import httpx
-from fastapi import FastAPI
+from fastapi import FastAPI, Body
+from typing import Annotated
 
-from engineering_thesis.routes.proc import proc_router
-import engineering_thesis.utilities.functions as fun
-import engineering_thesis.config as conf
+from routes.proc import proc_router
+from models.auth import *
+import utilities.functions as fun
+import config as conf
 
 app = FastAPI()
 
 app.include_router(proc_router)
-client_id="54321"
-client_secret="54321"
+
 
 @app.get("/")
 def nic():
@@ -24,6 +25,12 @@ async def test():
     async with httpx.AsyncClient() as client:
         response = await client.get(fun.compose_url(conf.SYS_IP, conf.SYS_PORT) + "/test")
     return response.json()
+
+
+# request: Annotated[UserAuthenticateReq, Body()]
+@app.post("/auth/user", status_code=200, response_model=Token)
+def authenticate_user():
+    return Token(access_token="abcdefgh12345678", token_type="Bearer token", expiatory_time=datetime.now())
 
 
 
