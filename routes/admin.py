@@ -2,9 +2,9 @@
 from fastapi import APIRouter
 import httpx
 
-from engineering_thesis import config
-from engineering_thesis.utilities import functions as fun
-from engineering_thesis.routes.user import user_router
+import config
+from utilities import functions as fun
+from routes.user import user_router
 
 
 
