@@ -17,8 +17,8 @@ class DatabaseType(Enum):
 
 
 class User(BaseModel):
-    client_id: str
-    client_secret: str
+    username: str
+    password: str
     admin: bool = False
     token: str
     creation_date: datetime = datetime.now()

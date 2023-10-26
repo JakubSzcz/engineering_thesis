@@ -12,6 +12,7 @@ user_router = APIRouter(
     tags=["User"],
 )
 
+
 @user_router.get("", status_code=200)
 def retrive_users() -> List[user.UserResponse]:
     return {}

@@ -4,8 +4,6 @@ import httpx
 
 import config
 from utilities import functions as fun
-from routes.user import user_router
-
 
 
 admin_router = APIRouter(
@@ -13,8 +11,6 @@ admin_router = APIRouter(
     tags=["Administration panel"]
 )
 
-
-admin_router.include_router(user_router)
 
 @admin_router.get("/")
 def admin_home():

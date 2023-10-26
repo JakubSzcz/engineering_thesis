@@ -1,8 +1,6 @@
 # imports
 import uvicorn
-from fastapi import FastAPI, Depends
-from typing import Annotated
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import FastAPI
 
 from routes.admin import admin_router
 from routes.auth import auth_router
