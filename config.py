@@ -19,9 +19,9 @@ PROC_SEC = ""
 SYS_SEC = ""
 
 # POSTGRES
-PG_PSW = "@mM&UmSZ}}3F99A8"
+PG_PSW = "postgres"
 PG_PORT = "2020"
 PG_USR = "postgres"
 PG_HOST = "localhost"
-PG_DB = "users"
+PG_DB = "postgres_db"
 
