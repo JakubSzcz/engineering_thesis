@@ -1,5 +1,4 @@
 # imports
-import httpx
 from passlib.context import CryptContext
 
 
@@ -11,6 +10,7 @@ def compose_url(ip: str, port: str,):
         return str(ip + ":" + port)
 
 
+# Hashing class
 class HashContext:
     def __init__(self):
         self.context = CryptContext(schemes=["bcrypt"])

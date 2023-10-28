@@ -23,7 +23,6 @@ hash_context = functions.HashContext()
 
 
 # ### functions ###
-
 # function to generate jwt token
 def creat_access_token(sub: str | Any, requested_time: datetime, exp_delta: int = None) -> (str, datetime):
 
@@ -43,16 +42,19 @@ def creat_access_token(sub: str | Any, requested_time: datetime, exp_delta: int 
 
 
 # ### endpoints ###
-@auth_router.get("/user")
+@auth_router.get("/user", status_code=200, description="Verifies if user exist and if provided password is correct",
+                 response_description="Returns flags if user exist and password if password is correct. "
+                                      "If both of this are true, it returns access token")
 async def user_exists(
         user_username: Annotated[str, Header(example="abcdefgh12345678", min_length=16, max_length=32,
-                                        title="Client username",
-                                        description="Unique char sequence provided by the client in order "
-                                                    "to identifies users")],
+                                             title="Client username",
+                                             description="Unique char sequence provided by the client in order "
+                                                         "to identifies users")],
         user_password_plain: Annotated[str, Header(example="abcdefgh12345678", min_length=16, max_length=32,
-                                        title="Client password", description="Plain password provided by the client")],
-        timestamp: Annotated[datetime, Header(title="Timestamp", description="timestamp of token request creation")]
-):
+                                                   title="Client password",
+                                                   description="Plain password provided by the client")],
+        timestamp: Annotated[datetime, Header(title="Timestamp", description="Timestamp of token request creation")]
+) -> UserAuthRes:
     # verify database destination by the last user_name char
     try:
         last_char = int(user_username[len(user_username)-1])
@@ -61,10 +63,10 @@ async def user_exists(
             status_code=500,
             detail="Last character in the username should be int in order to indentify db source"
         )
-
+    # declare database type used
     if 0 <= last_char < 3:
         db_type = DatabaseType.PSQL
-    elif 3 <= last_char < 5:
+    elif 3 <= last_char < 6:
         db_type = DatabaseType.MDB
     elif 6 <= last_char < 8:
         db_type = DatabaseType.REDIS
@@ -75,9 +77,9 @@ async def user_exists(
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(
-                url=functions.compose_url(SYS_IP, SYS_PORT) + "/" + db_type.value[0] + "/user",
+                url=functions.compose_url(SYS_IP, SYS_PORT) + "/" + db_type.value + "/user/validate",
                 headers=httpx.Headers({
-                    "user-username": user_username[:-1]
+                    "user-username": user_username
                 })
             )
         except httpx.ConnectError:
@@ -89,7 +91,7 @@ async def user_exists(
         # if users exists, verifies its password
         if bool(response.json()["exist"]):
             if hash_context.verify(user_password_plain, response.json()["password_hashed"]):
-                token, expiry_time = creat_access_token(user_username[:-1], requested_time=timestamp)
+                token, expiry_time = creat_access_token(user_username, requested_time=timestamp)
                 return UserAuthRes(token=Token(access_token=token, token_type="Bearer", expiatory_time=expiry_time),
                                    exist=True, correct_pwd=True)
             else:

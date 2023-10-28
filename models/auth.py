@@ -25,10 +25,7 @@ class UserAuthRes(BaseModel):
 
 
 # REQUEST
-class UserAuthenticateReq(BaseModel):
-    client_id: str
-    client_secret_plain: str
-    timestamp: datetime
+
 
 # DATABASE
 
