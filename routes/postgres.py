@@ -17,7 +17,7 @@ db = PostgreSQL()
 
 
 # ### endpoints ###
-@psql_router.get("/user/validate", description="Validates whether user exists",
+@psql_router.get("/user/validate", description="Validates whether user exists in PostgreSQL",
                  response_description="Returns flag and hashed_password if user exists", status_code=200)
 async def validate_user(
         user_username: Annotated[str, Header(example="abcdefgh12345678", min_length=16, max_length=32,
@@ -121,11 +121,11 @@ async def insert_user(
         db.commit()
         raise e
     db.commit()
-    return {"message": "New user created"}
+    return {"message": "New user created in PostgreSQL"}
 
 
 @psql_router.delete("/user", status_code=200, description="Delete user from the database by the username")
-async def insert_user(
+async def delete_user(
         username: Annotated[str, Query(title="Username", description="Unique user username",
                                        examples=["text_test_test_test1"])],
 ):
@@ -153,4 +153,4 @@ async def insert_user(
         db.commit()
         raise e
     db.commit()
-    return {"message": "User deleted"}
+    return {"message": "User deleted from PostgreSQL"}

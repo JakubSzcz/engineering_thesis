@@ -25,3 +25,10 @@ PG_USR = "postgres"
 PG_HOST = "localhost"
 PG_DB = "postgres_db"
 
+# MONGODB
+MDB_PORT = 2021
+MDB_HOST = "localhost"
+MDB_DB = "mongo_db"
+MDB_PSW = "mongo"
+
+
