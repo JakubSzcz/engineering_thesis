@@ -8,13 +8,13 @@ from typing import List
 class DatabaseType(str, Enum):
     REDIS = "redis",
     PSQL = "psql",
-    MDB = "mongo_db"
+    MDB = "mdb"
     SQLi = "sqlite"
 
 
 # RESPONSE
 class GetUserInfoRes(BaseModel):
-    user_id: int = Field(title="User id", description="Unique identificator of user", example=1)
+    user_id: int | str = Field(title="User id", description="Unique identificator of user", example=1)
     username: str = Field(title="User username", description="Unique username of user",
                           example="jkdnasjknjkkj22nkjk1")
     is_admin: bool = Field(title="Is user an admin", description="Indicator of admin rights", examples=[True])

@@ -18,5 +18,5 @@ app.include_router(user_router)
 
 # launch server
 if __name__ == "__main__":
-    print("Process API started successfully.")
+    print("[INFO] Process API started successfully.")
     uvicorn.run("main:app", host="127.0.0.1", port=8081, reload=True)
