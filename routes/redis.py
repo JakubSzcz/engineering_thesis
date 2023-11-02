@@ -1,6 +1,5 @@
 # libraries imports
 from datetime import datetime
-
 import redis
 from redis.commands.search.field import TextField
 from fastapi import APIRouter, Header, HTTPException, Query, Body
@@ -19,14 +18,8 @@ redis_router = APIRouter(
     tags=["Redis"]
 )
 # create redis instance
-try:
-    r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
-except redis.exceptions.ConnectionError as e:
-    print("[ERROR] Can not connect to the database")
-    raise HTTPException(
-        status_code=500,
-        detail="Can not connect to the database"
-    )
+r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, decode_responses=True)
+
 # create indexes
 # user index
 try:
@@ -34,7 +27,10 @@ try:
     # user exist
     users.info()
     print("[INFO] User index already exists. Data loaded.")
-except redis.exceptions.ResponseError:
+except redis.exceptions.ConnectionError as e:
+    print("[ERROR] Can not connect to the Redis database")
+    # raise e # TODO uncomment on testing
+except redis.exceptions.ResponseError as e:
     schema = (
         TextField(name='username'),
         TextField(name='password_hashed'),

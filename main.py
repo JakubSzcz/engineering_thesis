@@ -10,6 +10,7 @@ from routes import sqlite
 
 # ### variables ###
 app = FastAPI()
+# api routers includes
 app.include_router(postgres.psql_router)
 app.include_router(mongodb.mdb_router)
 app.include_router(redis.redis_router)
