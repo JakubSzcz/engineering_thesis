@@ -1,23 +1,32 @@
 # libraries imports
-from fastapi import APIRouter, Header, HTTPException, Query, Body
+from fastapi import APIRouter, Header, HTTPException, Query, Body, responses
 from typing import Annotated, List
+from datetime import datetime
+import os
+
 
 # packages imports
 from models import user
-from SQL_engines.PostgreSQL import PostgreSQL
-
+from SQL_engines.SQLite import SQLite
 
 # ### variables ###
-psql_router = APIRouter(
-    prefix="/psql",
-    tags=["PostgreSQL"]
+sqli_router = APIRouter(
+    prefix="/sqlite",
+    tags=["SQLite3"]
 )
-# database instance
-db = PostgreSQL()
+# connecting to the database file
+db = SQLite()
+if "sqlitedb.db" not in os.listdir("./SQL_engines"):
+    db.connect()
+    # create users database
+    db.execute("CREATE TABLE users (user_id INTEGER PRIMARY KEY ASC, username TEXT UNIQUE, password_hashed TEXT, "
+                "is_admin INTEGER, creation_date TEXT)")
+    db.commit()
+# ### functions ###
 
 
 # ### endpoints ###
-@psql_router.get("/user/validate", description="Validates whether user exists in PostgreSQL",
+@sqli_router.get("/user/validate", description="Validates whether user exists in PostgreSQL",
                  response_description="Returns flag and hashed_password if user exists", status_code=200)
 async def validate_user(
         user_username: Annotated[str, Header(example="abcdefgh12345678", min_length=16, max_length=32,
@@ -26,14 +35,7 @@ async def validate_user(
                                                                                   " identifies users")]
 ) -> user.UserExistsRes:
     # connect to the database
-    try:
-        db.connect(True)
-    except Exception:
-        print("[ERROR] Can not connect to the database")
-        raise HTTPException(
-            status_code=500,
-            detail="Can not connect to the database"
-        )
+    db.connect()
     # execute query, fetch response and close connection
     db.execute(f"SELECT * FROM users WHERE username = '{user_username}'")
     db_response = db.get_query_results()
@@ -43,10 +45,10 @@ async def validate_user(
     if not db_response:
         return user.UserExistsRes(exist=False)
     else:
-        return user.UserExistsRes(exist=True, password_hashed=db_response[0]["password_hashed"])
+        return user.UserExistsRes(exist=True, password_hashed=db_response[0][2])
 
 
-@psql_router.get("/user", description="Returns all the information stored about users or specified user",
+@sqli_router.get("/user", description="Returns all the information stored about users or specified user",
                  response_description="Returns information retrieved from the database", status_code=200)
 async def get_user_info(
         username: Annotated[str | None, Query(title="Username",
@@ -54,15 +56,7 @@ async def get_user_info(
         = None) -> user.GetUserInfoRes | List[user.GetUserInfoRes]:
 
     # connect to the database
-    try:
-        db.connect(True)
-    except Exception:
-        print("[ERROR] Can not connect to the database")
-        raise HTTPException(
-            status_code=500,
-            detail="Can not connect to the database"
-        )
-
+    db.connect()
     # if username was not provided select all users
     if username is None:
         # execute query, fetch response and close connection
@@ -77,10 +71,8 @@ async def get_user_info(
         # prepare list of users to return
         users = []
         for user_db in db_response:
-            users.append(user.GetUserInfoRes(
-                user_id=user_db["user_id"], username=user_db["username"], is_admin=user_db["is_admin"],
-                creation_date=user_db["creation_date"]
-            ))
+            users.append(user.GetUserInfoRes(user_id=user_db[0], username=user_db[1],
+                                             is_admin=user_db[3], creation_date=user_db[2]))
         return users
     # if username was provided
     else:
@@ -93,64 +85,44 @@ async def get_user_info(
                 status_code=404,
                 detail="No user with a such username"
             )
+        db_response = db_response[0]
         # return response
-        return user.GetUserInfoRes(
-                user_id=db_response[0]["user_id"], username=db_response[0]["username"],
-                is_admin=db_response[0]["is_admin"], creation_date=db_response[0]["creation_date"])
+        return user.GetUserInfoRes(user_id=db_response[0], username=db_response[1],
+                                             is_admin=db_response[3], creation_date=db_response[2])
 
 
-@psql_router.post("/user", status_code=201, description="Create new user")
+@sqli_router.post("/user", status_code=201, description="Create new user")
 async def insert_user(
         username: Annotated[str, Body(title="Username", description="Unique user username",
                                       examples=["text_test_test_test1"])],
         password_hash: Annotated[str, Body(title="Password", description="Unique user username",
                                            examples=["sadasdasdasdasd"])]
 ):
+    timestamp = datetime.utcnow()
     # connect to the database and executes query
-    try:
-        db.connect(True)
-    except Exception:
-        print("[ERROR] Can not connect to the database")
-        raise HTTPException(
-            status_code=500,
-            detail="Can not connect to the database"
-        )
-    try:
-        db.execute(f"INSERT INTO users (username, password_hashed) VALUES ('{username}', '{password_hash}');")
-    except Exception as e:
-        db.commit()
-        raise e
+    db.connect()
+    db.execute(f"INSERT INTO users (username, password_hashed, is_admin, creation_date) VALUES ('{username}', "
+               f"'{password_hash}', 0, '{timestamp}');")
     db.commit()
-    return {"message": "New user created in PostgreSQL"}
+    return {"message": "New user created in SQLite"}
 
 
-@psql_router.delete("/user", status_code=200, description="Delete user from the database by the username")
+@sqli_router.delete("/user", status_code=200, description="Delete user from the database by the username")
 async def delete_user(
         username: Annotated[str, Query(title="Username", description="Unique user username",
                                        examples=["text_test_test_test1"])],
 ):
     # connect to the database and execute query
-    try:
-        db.connect(True)
-    except Exception:
-        print("[ERROR] Can not connect to the database")
+    db.connect()
+    # check if user which is to be deleted exist in the database
+    db.execute(f"SELECT user_id FROM users WHERE username = '{username}'")
+    db_response = db.get_query_results()
+    if not db_response:
         raise HTTPException(
-            status_code=500,
-            detail="Can not connect to the database"
+            status_code=404,
+            detail="No user with a such username"
         )
-    try:
-        # check if user which is to be deleted exist in the database
-        db.execute(f"SELECT user_id FROM users WHERE username = '{username}'")
-        db_response = db.get_query_results()
-        if not db_response:
-            raise HTTPException(
-                status_code=404,
-                detail="No user with a such username"
-            )
-        # delete user from the database
-        db.execute(f"DELETE FROM users WHERE username = '{username}';")
-    except Exception as e:
-        db.commit()
-        raise e
+    # delete user from the database
+    db.execute(f"DELETE FROM users WHERE username = '{username}';")
     db.commit()
-    return {"message": "User deleted from PostgreSQL"}
+    return {"message": "User deleted from SQLite"}
