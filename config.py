@@ -31,4 +31,8 @@ MDB_HOST = "localhost"
 MDB_DB = "mongo_db"
 MDB_PSW = "mongo"
 
-
+# REDIS
+REDIS_PORT = 2022
+REDIS_HOST = "localhost"
+REDIS_DB = "redis"  # not used
+REDIS_PSW = "redis"  # not used

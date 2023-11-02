@@ -10,7 +10,7 @@ from postgres_db.PostgreSQL import PostgreSQL
 # ### variables ###
 psql_router = APIRouter(
     prefix="/psql",
-    tags=["PostgreSQL"],
+    tags=["PostgreSQL"]
 )
 # database instance
 db = PostgreSQL()
