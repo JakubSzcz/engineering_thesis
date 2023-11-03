@@ -3,13 +3,21 @@ import uvicorn
 from fastapi import FastAPI
 
 # packages imports
+from config import *
 from routes import postgres
 from routes import mongodb
 from routes import redis
 from routes import sqlite
 
 # ### variables ###
-app = FastAPI()
+app = FastAPI(
+    title="System API (SYS_API)",
+    description=sys_description,
+    summary="System layer of the microservice.",
+    version="1.0",
+    openapi_tags=tags_metadata_sys_api
+)
+
 # api routers includes
 app.include_router(postgres.psql_router)
 app.include_router(mongodb.mdb_router)

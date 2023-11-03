@@ -1,12 +1,12 @@
 # libraries imports
-from fastapi import APIRouter, Header, HTTPException, Query, Body, responses
+from fastapi import APIRouter, Header, HTTPException, Query, Body
 from typing import Annotated, List
 from datetime import datetime
 import os
 
 
 # packages imports
-from models import user
+from models import user, openapi
 from SQL_engines.SQLite import SQLite
 
 # ### variables ###
@@ -20,13 +20,13 @@ if "sqlitedb.db" not in os.listdir("./SQL_engines"):
     db.connect()
     # create users database
     db.execute("CREATE TABLE users (user_id INTEGER PRIMARY KEY ASC, username TEXT UNIQUE, password_hashed TEXT, "
-                "is_admin INTEGER, creation_date TEXT)")
+               "is_admin INTEGER, creation_date TEXT)")
     db.commit()
 # ### functions ###
 
 
 # ### endpoints ###
-@sqli_router.get("/user/validate", description="Validates whether user exists in PostgreSQL",
+@sqli_router.get("/user/validate", description="Validates whether user exists in SQLite",
                  response_description="Returns flag and hashed_password if user exists", status_code=200)
 async def validate_user(
         user_username: Annotated[str, Header(example="abcdefgh12345678", min_length=16, max_length=32,
@@ -49,7 +49,10 @@ async def validate_user(
 
 
 @sqli_router.get("/user", description="Returns all the information stored about users or specified user",
-                 response_description="Returns information retrieved from the database", status_code=200)
+                 response_description="Returns information retrieved from the database", status_code=200,
+                 responses={
+                     404: openapi.database_empty
+                 })
 async def get_user_info(
         username: Annotated[str | None, Query(title="Username",
                                               description="Username by which you can retrieve its info from database")]
@@ -88,10 +91,13 @@ async def get_user_info(
         db_response = db_response[0]
         # return response
         return user.GetUserInfoRes(user_id=db_response[0], username=db_response[1],
-                                             is_admin=db_response[3], creation_date=db_response[2])
+                                   is_admin=db_response[3], creation_date=db_response[2])
 
 
-@sqli_router.post("/user", status_code=201, description="Create new user")
+@sqli_router.post("/user", status_code=201, description="Create new user",
+                  responses={
+                      201: openapi.new_user_created
+                  })
 async def insert_user(
         username: Annotated[str, Body(title="Username", description="Unique user username",
                                       examples=["text_test_test_test1"])],
@@ -107,7 +113,11 @@ async def insert_user(
     return {"message": "New user created in SQLite"}
 
 
-@sqli_router.delete("/user", status_code=200, description="Delete user from the database by the username")
+@sqli_router.delete("/user", status_code=200, description="Delete user from the database by the username",
+                    responses={
+                        200: openapi.user_deleted,
+                        404: openapi.no_username_found
+                    })
 async def delete_user(
         username: Annotated[str, Query(title="Username", description="Unique user username",
                                        examples=["text_test_test_test1"])],

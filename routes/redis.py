@@ -8,7 +8,7 @@ from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from redis.commands.search.query import Query as redisQuery
 
 # packages imports
-from models import user
+from models import user, openapi
 from config import *
 
 
@@ -47,7 +47,10 @@ except redis.exceptions.ResponseError as e:
 
 # ### endpoints ###
 @redis_router.get("/user/validate", description="Validates whether user exists in Redis",
-                 response_description="Returns flag and hashed_password if user exists", status_code=200)
+                  response_description="Returns flag and hashed_password if user exists", status_code=200,
+                  responses={
+                      500: openapi.cannot_connect_to_db
+                  })
 async def validate_user(
         user_username: Annotated[str, Header(example="abcdefgh12345678", min_length=16, max_length=32,
                                              title="Client username", description="Unique char sequence provided by the"
@@ -71,7 +74,11 @@ async def validate_user(
 
 
 @redis_router.get("/user", description="Returns all the information stored about users or specified user",
-                response_description="Returns information retrieved from the database", status_code=200)
+                  response_description="Returns information retrieved from the database", status_code=200,
+                  responses={
+                      404: openapi.no_username_found,
+                      500: openapi.cannot_connect_to_db
+                  })
 async def get_user_info(
         username: Annotated[str | None, Query(title="Username",
                                               description="Username by which you can retrieve its info from database")]
@@ -118,7 +125,11 @@ async def get_user_info(
                 is_admin=db_response["is_admin"], creation_date=db_response["creation_date"])
 
 
-@redis_router.post("/user", status_code=201, description="Create new user")
+@redis_router.post("/user", status_code=201, description="Create new user",
+                   responses={
+                       201: openapi.new_user_created,
+                       500: openapi.cannot_connect_to_db
+                   })
 async def insert_user(
         username: Annotated[str, Body(title="Username", description="Unique user username",
                                       examples=["text_test_test_test1"])],
@@ -138,8 +149,13 @@ async def insert_user(
     return {"message": "New user created in Redis"}
 
 
-@redis_router.delete("/user", status_code=200, description="Delete user from the database by the username")
-async def insert_user(
+@redis_router.delete("/user", status_code=200, description="Delete user from the database by the username",
+                     responses={
+                        200: openapi.user_deleted,
+                        404: openapi.no_username_found,
+                        500: openapi.cannot_connect_to_db
+                     })
+async def delete_user(
         username: Annotated[str, Query(title="Username", description="Unique user username",
                                        examples=["text_test_test_test1"])],
 ):
