@@ -9,6 +9,7 @@ from jose import jwt
 from pydantic import ValidationError
 
 from models import auth
+from models import openapi
 from cache import Cache
 from utilities import functions
 from config import *
@@ -48,7 +49,13 @@ async def is_user_authenticated(token: Annotated[str, Depends(oauth2_scheme)]) -
 
 # ### endpoints###
 @auth_router.post("/token", description="Endpoints for creation of token", status_code=201,
-                  response_description="Returns access token with its expiration time")
+                  response_description="Returns access token with its expiration time",
+                  responses={
+                    400: openapi.wrong_db_type_header,
+                    401: openapi.incorrect_credentials,
+                    404: openapi.no_username_found,
+                    500: openapi.cannot_connect_to_proc_api
+                  })
 async def get_token(form: Annotated[OAuth2PasswordRequestForm, Depends()]) -> auth.Token:
     timestamp = datetime.utcnow()
     # check if user exist in database

@@ -6,6 +6,7 @@ import httpx
 # packages import
 from config import *
 from models import user
+from models import openapi
 from utilities import functions
 
 # ### variables ###
@@ -26,11 +27,16 @@ def validate_db_type(db_type: str):
 
 # ### endpoints ###
 @user_router.get("/{username}", status_code=200, description="Retrieve user by it username",
-                 response_description="User info from database")
+                 response_description="User info from database",
+                 responses={
+                     400: openapi.wrong_db_type_header,
+                     404: openapi.no_username_found,
+                     500: openapi.cannot_connect_to_proc_api
+                 })
 async def retrieve_user(
         db_type: Annotated[str, Header(title="Database type", description="Select database you want to retrieve users "
-                                                                          "info from", examples=["REDIS", "MDB",
-                                                                                                 "PSQL", "SQLi"])],
+                                                                          "info from: ['REDIS', 'MDB','PSQL', 'SQLi']",
+                                       examples=["REDIS", "MDB","PSQL", "SQLi"])],
         username: Annotated[str, Path(title="User id", description="User username unique char sequence",
                                       example="test_test_test_test")]
 ) -> user.UserResponse:
@@ -61,7 +67,11 @@ async def retrieve_user(
 
 
 @user_router.get("", status_code=200, description="Retrieve all users info from the specified database",
-                 response_description="List of users stored in the database")
+                 response_description="List of users stored in the database",
+                 responses={
+                     400: openapi.wrong_db_type_header,
+                     500: openapi.cannot_connect_to_proc_api
+                 })
 async def retrieve_all_users(
         db_type: Annotated[str, Header(title="Database type", description="Select database you want to retrieve users "
                                                                           "info from", examples=["REDIS", "MDB",
@@ -93,7 +103,13 @@ async def retrieve_all_users(
         )
 
 
-@user_router.delete("/{username}", status_code=200, description="Deletes user with provided username")
+@user_router.delete("/{username}", status_code=200, description="Deletes user with provided username",
+                    responses={
+                        200: openapi.user_deleted,
+                        400: openapi.wrong_db_type_header,
+                        404: openapi.no_username_found,
+                        500: openapi.cannot_connect_to_proc_api
+                    })
 async def delete_user(
         db_type: Annotated[str, Header(title="Database type", description="Select database you want to store user info"
                                                                           "info from", examples=["REDIS", "MDB",
@@ -128,7 +144,11 @@ async def delete_user(
 
 
 @user_router.post("", status_code=201, description="Creates user into provided database",
-                  response_description="Returns username and password")
+                  response_description="Returns username and password",
+                  responses={
+                      400: openapi.wrong_db_type_header,
+                      500: openapi.cannot_connect_to_proc_api
+                  })
 async def create_user(
         db_type: Annotated[str, Header(title="Database type", description="Select database you want to store user info"
                                                                           "info from", examples=["REDIS", "MDB",

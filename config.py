@@ -29,22 +29,29 @@ JWT_ALGORITHM = "HS256"
 JWT_SECRET_KEY = "39B14A7C47F4AE6B1DC365B8F341E1A0F33D7B41662E3274E427DD3B227E49A1"
 JWT_ISS = "http://" + PROC_IP + "/proc_api"
 
-# TBD
-# SIGNING KEYS
-PRIVATE_KEY = "MIICXAIBAAKBgQCS132WqO6DhV6DvcmhSLwtYRM3ZdAe6sXphQs9gAk9ZQe6f3qf"\
-              "q9jkUqfRhmgtX8wA4yUVov7ZJKetEgY9cBfpHK9lwSx6yXyJgTRZukTlwZbcrw9X)"\
-              "MPnmCZZKK6c7ClfW0Q6lVZ+hF1um3qS9nzMyNDQMOW8w1Hohgz41VUva6wIDAQAB"\
-              "AoGAX0m3Fa1KGc7SJmtiDGdGtavo7GoFRArVo1PSl3YeiNimyz8uM68wb/mzLSQr"\
-              "NkaT+39q8T90YTSIGqc3pWa4HGllZTJJZiDosyhcNX9R1YVUEDwCiNrQjUguzYS8"\
-              "/osBYOo5KrEC7WKfkbnQkmjh8GOL9NEVPI2crluKnzomRgECQQD7oFBm/57sAypL"\
-              "1FO3YUKKw8Wrs+LeTu+g48uXCIrsq6f7ucPy82Zx1Kr4HOuxKPvwJxUe79dw+Utk"\
-              "YgXNFbijAkEAlWToIpxvWsjOQEMkeR4SBv7g+ydqg9PAIdWdSHgkm0Pmh1qIhgiz"\
-              "ASOoudPVb79SKeAhHSI6jSa2MQJbbA4RGQJAIwnx6EXUNX1DWIfamICcqYIVdpF4"\
-              "GAjZ6YePBBsWbVqB69W0aZJnQ5afsCkm0OaqHojysfon//1W+EWGFUbfDQJAC9/G"\
-              "V6Hpc+TMB+2OQ5YxRp8RkMTUQYAeIFJTOwRZnIGsHAwFF+ovGCMWcRa2OziQtkVb"\
-              "PG6RCtEN4B1Y2ODRWQJBALBDd666F+2yTMQOFp/skx3oGN7FOJjwhNF0zG3yw4R4"\
-              "NeUSagHlw8xuEAUGUeeIwaHS3qKi7ROGElbpJROQzQk="
-PUBLIC_KEY = "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCS132WqO6DhV6DvcmhSLwtYRM3"\
-             "ZdAe6sXphQs9gAk9ZQe6f3qfq9jkUqfRhmgtX8wA4yUVov7ZJKetEgY9cBfpHK9l)"\
-             "wSx6yXyJgTRZukTlwZbcrw9XMPnmCZZKK6c7ClfW0Q6lVZ+hF1um3qS9nzMyNDQM"\
-             "OW8w1Hohgz41VUva6wIDAQAB"
+# OPENAPI
+exp_description = """
+Experience API purpose is to handle all user related request and returns to users.
+## Experience API is responsible for:
+* **Create users** 
+* **Read users** 
+* **Delete users**
+* **Generates token**
+* **Insert data to Database** (_not implemented_).
+* **Delete data from Database** (_not implemented_).
+* **Queries data from Database** (_not implemented_).
+"""
+tags_metadata_exp_api = [
+    {
+        "name": "Administration panel",
+        "description": "Admin operation such us direct access to the database resources",
+    },
+    {
+        "name": "Authorization",
+        "description": "Manage authorization related operations, like token generation.",
+    },
+    {
+        "name": "User",
+        "description": "User related operations to all databases like insert, delete and read",
+    }
+]
