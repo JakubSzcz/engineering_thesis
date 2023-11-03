@@ -11,6 +11,7 @@ from jose import jwt
 from config import *
 from models.user import DatabaseType
 from models.auth import *
+from models import openapi
 
 
 # ### variables ###
@@ -44,7 +45,12 @@ def creat_access_token(sub: str | Any, requested_time: datetime, exp_delta: int 
 # ### endpoints ###
 @auth_router.get("/user", status_code=200, description="Verifies if user exist and if provided password is correct",
                  response_description="Returns flags if user exist and password if password is correct. "
-                                      "If both of this are true, it returns access token")
+                                      "If both of this are true, it returns access token",
+                 responses={
+                     404: openapi.no_username_found,
+                     500: openapi.cannot_connect_to_sys_api
+                 }
+                 )
 async def user_exists(
         user_username: Annotated[str, Header(example="abcdefgh12345678", min_length=16, max_length=32,
                                              title="Client username",

@@ -24,10 +24,9 @@ class GetUserInfoRes(BaseModel):
 
 class UserToExpRes(BaseModel):
     users: GetUserInfoRes | List[GetUserInfoRes] = Field(title="User info", description="Response from database",
-                                                         examples=[[
-    [GetUserInfoRes(user_id=1, username="test", is_admin=False, creation_date="2023-10-24T17:13:07.909934"),
-     GetUserInfoRes(user_id=2, username="test2", is_admin=False, creation_date="2023-11-24T17:13:07.909934")]],
-     GetUserInfoRes(user_id=1, username="test", is_admin=False, creation_date="2023-10-24T17:13:07.909934")])
+                                                         example=
+    [GetUserInfoRes(user_id=1, username="test1", is_admin=False, creation_date="2023-10-24T17:13:07.909934"),
+     GetUserInfoRes(user_id=2, username="test2", is_admin=False, creation_date="2023-11-24T17:13:07.909934")])
 
 
 class CreateUserRes(BaseModel):

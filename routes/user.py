@@ -11,6 +11,7 @@ import string
 # packages imports
 from config import *
 from models.user import *
+from models import openapi
 
 
 # ### variables ###
@@ -31,7 +32,11 @@ def generate_random_string():
 
 # ### endpoints ####
 @user_router.get("", description="Request user info from sys_api", response_description="List of users",
-                 status_code=200)
+                 status_code=200,
+                 responses={
+                     404: openapi.no_username_found,
+                     500: openapi.cannot_connect_to_sys_api
+                 })
 async def get_user(
     db_type: Annotated[str, Header(title="Database type",
                                    description="Select database you want to retrieve users info from",
@@ -76,10 +81,14 @@ async def get_user(
 
 
 @user_router.post("", status_code=201, description="Creates a new user in the database",
-                  response_description="Returns credentials: username and password")
+                  response_description="Returns credentials: username and password",
+                  responses={
+                      500: openapi.cannot_connect_to_sys_api
+                  })
 async def create_user(
     db_type: Annotated[str, Header(title="Database type",
-                                   description="Select database you want to retrieve users info from",
+                                   description="Indicates database in which users will be created: ['REDIS', 'MDB',"
+                                               " 'PSQL', 'SQLi']",
                                    examples=["REDIS", "MDB", "PSQL", "SQLi"])]
 ) -> CreateUserRes:
 
@@ -125,13 +134,18 @@ async def create_user(
 
 
 @user_router.delete("", status_code=200, description="Deletes user with provided username",
-                    response_description="None")
+                    response_description="Deletion confirmation",
+                    responses={
+                        200: openapi.user_deleted,
+                        404: openapi.no_username_found,
+                        500: openapi.cannot_connect_to_sys_api
+                    })
 async def delete_user(
-        db_type: Annotated[str, Header(title="Database type", description="Select database you want to retrieve users "
-                                                                          "info from", examples=["REDIS", "MDB",
-                                                                                                 "PSQL", "SQLi"])],
-        username: Annotated[str, Query(title="Username", description="Username by which you can retrieve its "
-                                                                     "info from database")]
+        db_type: Annotated[str, Header(title="Database type", description="Select database you want to delete user "
+                                                                          "from: ['REDIS', 'MDB', 'PSQL', 'SQLi']",
+                                       examples=["REDIS", "MDB", "PSQL", "SQLi"])],
+        username: Annotated[str, Query(title="Username", description="Username by which user will be deleted "
+                                                                     "from the database")]
 ):
     async with httpx.AsyncClient() as client:
         try:
