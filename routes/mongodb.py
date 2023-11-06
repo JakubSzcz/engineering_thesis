@@ -163,7 +163,6 @@ async def delete_user(
 
 @mdb_router.get("/restart", description="Restarts data MongoDB database", status_code=200)
 def restart_mongo():
-
     # connect to the database and executes query
     try:
         # restart all collections
@@ -173,7 +172,18 @@ def restart_mongo():
         print("[ERROR] Can not connect to the database")
         raise HTTPException(
             status_code=500,
-            detail="Can not connect to the database"
+            detail={
+                "db_type": "mdb",
+                "message": "Can not connect to the database"
+            }
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "db_type": "mdb",
+                "message": "MongoDB database reset failed"
+            }
         )
 
     return {"message": "MongoDB database data set has been reset"}

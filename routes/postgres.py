@@ -184,21 +184,34 @@ def restart_postgres():
         print("[ERROR] Can not connect to the database")
         raise HTTPException(
             status_code=500,
-            detail="Can not connect to the database"
+            detail={
+                "db_type": "psql",
+                "message": "Can not connect to the database"
+            }
         )
-    # check if data tables exists and restart it if not
-    for table_name in tables_names:
-        db.execute(f"SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = '{table_name}');")
-        if db.get_query_results()[0]["exists"]:
-            # clear table content
-            if table_name == "title_basics":
-                db.execute(f"TRUNCATE {table_name} CASCADE;")
+
+    try:
+        # check if data tables exists and restart it if not
+        for table_name in tables_names:
+            db.execute(f"SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = '{table_name}');")
+            if db.get_query_results()[0]["exists"]:
+                # clear table content
+                if table_name == "title_basics":
+                    db.execute(f"TRUNCATE {table_name} CASCADE;")
+                else:
+                    db.execute(f"TRUNCATE {table_name};")
             else:
-                db.execute(f"TRUNCATE {table_name};")
-        else:
-            # create table
-            db.execute(tables_create_psql[table_name])
-    db.commit()
+                # create table
+                db.execute(tables_create_psql[table_name])
+        db.commit()
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "db_type": "psql",
+                "message": "Postgres database reset failed"
+            }
+        )
 
     return {"message": "Postgres database data set has been reset"}
 

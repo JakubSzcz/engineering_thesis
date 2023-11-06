@@ -1,7 +1,6 @@
 # libraries imports
 from datetime import datetime
 import redis
-from redis.commands.search.field import TextField
 from fastapi import APIRouter, Header, HTTPException, Query, Body
 from typing import Annotated, List
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
@@ -205,7 +204,18 @@ def restart_redis():
         print("[ERROR] Can not connect to the database")
         raise HTTPException(
             status_code=500,
-            detail="Can not connect to the database"
+            detail={
+                "db_type": "redis",
+                "message": "Can not connect to the database"
+            }
+        )
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "db_type": "redis",
+                "message": "Redis database reset failed"
+            }
         )
 
     return {"message": "Redis database data set has been reset"}
@@ -262,5 +272,5 @@ async def insert_redis(
             detail="None of the data to be inserted has been provided"
         )
 
-    return {"message":  "Record has been inserted successfully."}
+    return {"db_type": "redis", "message":  "Record has been inserted successfully."}
 

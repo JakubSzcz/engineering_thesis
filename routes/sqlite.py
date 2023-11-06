@@ -156,12 +156,24 @@ def restart_sqlite():
         print("[ERROR] Can not connect to the database")
         raise HTTPException(
             status_code=500,
-            detail="Can not connect to the database"
+            detail={
+                "db_type": "sqlite",
+                "message": "Can not connect to the database"
+            }
         )
     # check if data tables exists and restart it if not
-    for table_name in tables_names:
-        db.execute(f"DELETE FROM {table_name};")
-    db.commit()
+    try:
+        for table_name in tables_names:
+            db.execute(f"DELETE FROM {table_name};")
+        db.commit()
+    except Exception:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "db_type": "sqlite",
+                "message": "SQLite database reset failed"
+            }
+        )
 
     return {"message": "SQLite database data set has been reset"}
 
