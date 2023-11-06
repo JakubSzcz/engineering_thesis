@@ -55,3 +55,11 @@ tags_metadata_exp_api = [
         "description": "User related operations to all databases like insert, delete and read",
     }
 ]
+
+#DATABASE
+title_basics_path = "../../bazy/title.basics.tsv/data.tsv"
+title_basics_path_url = "../../bazy/title.basics.tsv/data_url.tsv"
+name_basics_path = "../../bazy/name.basics.tsv/data.tsv"
+name_basics_path_url = "../../bazy/name.basics.tsv/data_url.tsv"
+title_episodes_path = "../../bazy/title.episode.tsv/data.tsv"
+title_episodes_path_url = "../../bazy/title.episode.tsv/data_url.tsv"
