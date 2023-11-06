@@ -1,12 +1,12 @@
 # libraries imports
-from fastapi import APIRouter, Header, HTTPException, Query, Body, responses
+from fastapi import APIRouter, Header, HTTPException, Query, Body
 from typing import Annotated, List
 from pymongo import MongoClient
 from datetime import datetime
 from pymongo.errors import ServerSelectionTimeoutError
 
 # packages imports
-from models import user, openapi
+from models import user, openapi, querry_db
 from config import *
 
 
@@ -23,6 +23,9 @@ try:
     db = client[MDB_DB]
     # define collection
     users = db["users"]
+    title_basics_collection = db["title_basics"]
+    name_basics_collection = db["name_basics"]
+    title_episodes_collection = db["title_episodes"]
 except ServerSelectionTimeoutError as e:
     print("[ERROR] Can not connect to the database")
     raise e
@@ -120,7 +123,7 @@ async def insert_user(
 ):
     try:
         users.insert_one({"username": username, "password_hashed": password_hash,
-                      "is_admin": False, "creation_date": datetime.utcnow()})
+                          "is_admin": False, "creation_date": datetime.utcnow()})
     except ServerSelectionTimeoutError:
         print("[ERROR] Can not connect to the database")
         raise HTTPException(
@@ -156,3 +159,76 @@ async def delete_user(
             detail="Can not connect to the database"
         )
     return {"message": "User deleted from MongoDB"}
+
+
+@mdb_router.get("/restart", description="Restarts data MongoDB database", status_code=200)
+def restart_mongo():
+
+    # connect to the database and executes query
+    try:
+        # restart all collections
+        for table_name in tables_names:
+            db[table_name].delete_many({})
+    except ServerSelectionTimeoutError:
+        print("[ERROR] Can not connect to the database")
+        raise HTTPException(
+            status_code=500,
+            detail="Can not connect to the database"
+        )
+
+    return {"message": "MongoDB database data set has been reset"}
+
+
+@mdb_router.post("/insert", description="Insert data MongoDB database", status_code=201)
+async def insert_mongo(
+    title_basics: Annotated[querry_db.InsertTitleBasic | None, Body()] = None,
+    name_basics: Annotated[querry_db.InsertNameBasic | None, Body()] = None,
+    title_episode: Annotated[querry_db.InsertTitleEpisode | None, Body()] = None
+):
+    # no data provided flag
+    no_data = True
+
+    # check which data has been provided
+    try:
+
+        # insert data if provided
+        if title_basics:
+            no_data = False
+            title_basics_collection.insert_one({
+                "tconst": title_basics.tconst, "titleType": title_basics.titleType,
+                "primaryTitle": title_basics.primaryTitle, "originalTitle": title_basics.originalTitle,
+                "isAdult": int(title_basics.isAdult), "startYear": int(title_basics.startYear),
+                "endYear": int(title_basics.endYear),"runtimeMinutes": int(title_basics.runtimeMinutes),
+                "genres": title_basics.genres
+            })
+
+        if name_basics:
+            no_data = False
+            name_basics_collection.insert_one({
+                "nconst": name_basics.nconst, "primaryName": name_basics.primaryName,
+                "birthYear": int(name_basics.birthYear), "deathYear": int(name_basics.deathYear),
+                "primaryProfession": name_basics.primaryProfession, "knownForTitles": name_basics.knownForTitles
+            })
+
+        if title_episode:
+            no_data = False
+            title_episodes_collection({
+                "tconst": title_episode.tconst, "parentTconst": title_episode.parentTconst,
+                "seasonNumber": int(title_episode.seasonNumber), "episodeNumber": int(title_episode.episodeNumber)
+            })
+
+    except ServerSelectionTimeoutError:
+        print("[ERROR] Can not connect to the database")
+        raise HTTPException(
+            status_code=500,
+            detail="Can not connect to the database"
+        )
+
+    # if none data has been provided, rais an error
+    if no_data:
+        raise HTTPException(
+            status_code=422,
+            detail="None of the data to be inserted has been provided"
+        )
+
+    return {"message":  "Record has been inserted successfully."}

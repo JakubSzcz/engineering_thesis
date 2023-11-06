@@ -1,3 +1,5 @@
+from redis.commands.search.field import TextField, NumericField, TagField
+
 # LINKS
 EXP_IP = "localhost"
 PROC_IP = "localhost"
@@ -65,3 +67,99 @@ tags_metadata_sys_api = [
         "description": "Manage all SQLite3 related operations.",
     }
 ]
+
+# DATABASES
+tables_names = ["title_basics", "name_basics", "title_episodes"]
+# POSTGRES
+tables_create_psql = {
+    "title_basics": "CREATE TABLE title_basics ( tconst VARCHAR(255) PRIMARY KEY, titleType VARCHAR(255), primaryTitle "
+                    "VARCHAR(255), originalTitle VARCHAR(255), isAdult BOOLEAN, startYear INTEGER, endYear INTEGER, "
+                    "runtimeMinutes INTEGER, genres VARCHAR(255));",
+    "name_basics": "CREATE TABLE name_basics (nconst VARCHAR(255) PRIMARY KEY, primaryName VARCHAR(255), birthYear "
+                  "INTEGER, deathYear INTEGER, primaryProfession VARCHAR(255)[3], "
+                  "knownForTitles VARCHAR(255)[]);",
+    "title_episodes": "CREATE TABLE title_episodes (tconst VARCHAR(255) PRIMARY KEY, parentTconst VARCHAR(255) "
+                      "REFERENCES title_basics (tconst), seasonNumber INTEGER, episodeNumber INTEGER);"
+}
+tables_insert_psql = {
+    "title_basics": "INSERT INTO title_basics (tconst, titleType, primaryTitle, originalTitle, isAdult, startYear, "
+                    "endYear, runtimeMinutes, genres) VALUES (\'{tconst}\', \'{titleType}\', \'{primaryTitle}\',"
+                    " \'{originalTitle}\', \'{isAdult}\', \'{startYear}\', \'{endYear}\',"
+                    " \'{runtimeMinutes}\', \'{genres}\')",
+    "name_basics": "INSERT INTO name_basics (nconst, primaryName, birthYear, deathYear, primaryProfession, knownForTitles, )"
+                  " VALUES (\'{nconst}\', \'{primaryName}\', \'{birthYear}\',"
+                  " \'{deathYear}\', \'{primaryProfession}\', \'{knownForTitles}\')",
+    "title_episodes": "INSERT INTO persons (tconst, primaryName, birthYear, deathYear, primaryProfession, knownForTitles, )"
+                  " VALUES (\'{nconst}\', \'{primaryName}\', \'{birthYear}\',"
+                    " \'{deathYear}\', \'{primaryProfession}\', \'{knownForTitles}\')"
+}
+
+# REDIS
+indexes_create_schema = {
+    "title_basics": {
+        "schema": (
+            TextField(name='titleType'),
+            TextField(name='primaryTitle'),
+            TextField(name='originalTitle'),
+            NumericField(name='isAdult'),
+            NumericField(name='startYear'),
+            NumericField(name='endYear'),
+            NumericField(name='runtimeMinutes'),
+            TextField(name='genres'),
+        ),
+        "prefix": "tconst:"
+    },
+    "name_basics": {
+        "schema": (
+            TextField(name='primaryName'),
+            NumericField(name='birthYear'),
+            NumericField(name='deathYear'),
+            TagField(name='primaryProfession'),
+            TagField(name='knownForTitles')
+        ),
+        "prefix": "nconst:"
+    },
+    "title_episodes": {
+        "schema": (
+            TextField(name='parentTconst'),
+            NumericField(name='seasonNumber'),
+            NumericField(name='episodeNumber'),
+        ),
+        "prefix": "tconst:"
+    },
+    "users": {
+        "schema": (
+            TextField(name='username'),
+            TextField(name='password_hashed'),
+            TextField(name='is_admin'),
+            TextField(name='creation_date')
+        ),
+        "prefix": "user:"
+    }
+}
+
+# SQLITE
+tables_create_sqli = {
+    "title_basics": "CREATE TABLE title_basics ( tconst TEXT PRIMARY KEY, titleType TEXT, primaryTitle "
+                    "TEXT, originalTitle TEXT, isAdult INTEGER, startYear INTEGER, endYear INTEGER, "
+                    "runtimeMinutes INTEGER, genres TEXT);",
+    "name_basics": "CREATE TABLE name_basics (nconst TEXT PRIMARY KEY, primaryName TEXT, birthYear "
+                  "INTEGER, deathYear INTEGER, primaryProfession TEXT[], "
+                  "knownForTitles TEXT[]);",
+    "title_episodes": "CREATE TABLE title_episodes (tconst TEXT PRIMARY KEY, parentTconst TEXT "
+                      "REFERENCES title_basics (tconst), seasonNumber INTEGER, episodeNumber INTEGER);",
+    "users": "CREATE TABLE users (user_id INTEGER PRIMARY KEY ASC, username TEXT UNIQUE, password_hashed TEXT, "
+               "is_admin INTEGER, creation_date TEXT)"
+}
+tables_insert_sqli = {
+    "title_basics": "INSERT INTO title_basics (tconst, titleType, primaryTitle, originalTitle, isAdult, startYear, "
+                    "endYear, runtimeMinutes, genres) VALUES (\'{tconst}\', \'{titleType}\', \'{primaryTitle}\',"
+                    " \'{originalTitle}\', \'{isAdult}\', \'{startYear}\', \'{endYear}\',"
+                    " \'{runtimeMinutes}\', \'{genres}\')",
+    "name_basics": "INSERT INTO name_basics (nconst, primaryName, birthYear, deathYear, primaryProfession, knownForTitles, )"
+                  " VALUES (\'{nconst}\', \'{primaryName}\', \'{birthYear}\',"
+                  " \'{deathYear}\', \'{primaryProfession}\', \'{knownForTitles}\')",
+    "title_episodes": "INSERT INTO persons (tconst, primaryName, birthYear, deathYear, primaryProfession, knownForTitles, )"
+                  " VALUES (\'{nconst}\', \'{primaryName}\', \'{birthYear}\',"
+                    " \'{deathYear}\', \'{primaryProfession}\', \'{knownForTitles}\')"
+}

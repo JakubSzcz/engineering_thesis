@@ -1,4 +1,6 @@
 # libraries imports
+import sqlite3
+
 from fastapi import APIRouter, Header, HTTPException, Query, Body
 from typing import Annotated, List
 from datetime import datetime
@@ -6,7 +8,8 @@ import os
 
 
 # packages imports
-from models import user, openapi
+from models import user, openapi, querry_db
+from config import *
 from SQL_engines.SQLite import SQLite
 
 # ### variables ###
@@ -14,13 +17,18 @@ sqli_router = APIRouter(
     prefix="/sqlite",
     tags=["SQLite3"]
 )
-# connecting to the database file
+# connecting to the database file and create tables
 db = SQLite()
 if "sqlitedb.db" not in os.listdir("./SQL_engines"):
     db.connect()
     # create users database
-    db.execute("CREATE TABLE users (user_id INTEGER PRIMARY KEY ASC, username TEXT UNIQUE, password_hashed TEXT, "
-               "is_admin INTEGER, creation_date TEXT)")
+    db.execute(tables_create_sqli["users"])
+    # create title_basics database
+    db.execute(tables_create_sqli["title_basics"])
+    # create name_basics database
+    db.execute(tables_create_sqli["name_basics"])
+    # create title_episodes database
+    db.execute(tables_create_sqli["title_episodes"])
     db.commit()
 # ### functions ###
 
@@ -136,3 +144,94 @@ async def delete_user(
     db.execute(f"DELETE FROM users WHERE username = '{username}';")
     db.commit()
     return {"message": "User deleted from SQLite"}
+
+
+@sqli_router.get("/restart", description="Restarts data SQLite database", status_code=200)
+def restart_sqlite():
+
+    # connect to the database and executes query
+    try:
+        db.connect()
+    except Exception:
+        print("[ERROR] Can not connect to the database")
+        raise HTTPException(
+            status_code=500,
+            detail="Can not connect to the database"
+        )
+    # check if data tables exists and restart it if not
+    for table_name in tables_names:
+        db.execute(f"DELETE FROM {table_name};")
+    db.commit()
+
+    return {"message": "SQLite database data set has been reset"}
+
+
+@sqli_router.post("/insert", description="Insert data SQLite database", status_code=201)
+async def insert_postgres(
+    title_basics: Annotated[querry_db.InsertTitleBasic | None, Body()] = None,
+    name_basics: Annotated[querry_db.InsertNameBasic | None, Body()] = None,
+    title_episode: Annotated[querry_db.InsertTitleEpisode | None, Body()] = None
+):
+    # no data provided flag
+    no_data = True
+
+    # check which data has been provided
+    try:
+        db.connect()
+        # insert data if provided
+        if title_basics:
+            no_data = False
+            db.execute(
+                tables_insert_sqli["title_basics"].format(
+                    tconst=title_basics.tconst, titleType=title_basics.titleType,
+                    primaryTitle=title_basics.primaryTitle, originalTitle=title_basics.originalTitle,
+                    isAdult=int(title_basics.isAdult), startYear=int(title_basics.startYear),
+                    endYear=int(title_basics.endYear), runtimeMinutes=int(title_basics.runtimeMinutes),
+                    genres=title_basics.genres
+                )
+            )
+
+        if name_basics:
+            no_data = False
+            db.execute(
+                tables_insert_sqli["name_basics"].format(
+                    nconst=name_basics.nconst, primaryName=name_basics.primaryName,
+                    birthYear=int(name_basics.birthYear), deathYear=int(name_basics.deathYear),
+                    primaryProfession=name_basics.primaryProfession, knownForTitles=name_basics.knownForTitles
+                )
+            )
+
+        if title_episode:
+            no_data = False
+            db.execute(
+                tables_insert_sqli["title_episode"].format(
+                    tconst=title_episode.tconst, parentTconst=title_episode.parentTconst,
+                    seasonNumber=int(title_episode.seasonNumber), episodeNumber=int(title_episode.episodeNumber)
+                )
+            )
+
+        db.commit()
+
+    except sqlite3.Error.sqlite_errorcode as er:
+        if er == 2067:
+            print("[ERROR] There is already record with such id in the database")
+            db.commit()
+            raise HTTPException(
+                status_code=500,
+                detail="Such record already exists."
+            )
+        else:
+            print("[ERROR] Can not connect to the database")
+            raise HTTPException(
+                status_code=500,
+                detail="Can not connect to the database"
+            )
+
+    # if none data has been provided, rais an error
+    if no_data:
+        raise HTTPException(
+            status_code=422,
+            detail="None of the data to be inserted has been provided"
+        )
+
+    return {"message":  "Record has been inserted successfully."}
