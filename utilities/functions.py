@@ -1,5 +1,7 @@
 # imports
 from passlib.context import CryptContext
+import httpx
+from config import *
 
 
 # compose valid url
@@ -20,3 +22,11 @@ class HashContext:
 
     def verify(self, pwd_plain, pwd_hashed) -> bool:
         return self.context.verify(pwd_plain, pwd_hashed)
+
+
+# send parallel request to the sys_api in order to restart_db
+async def send_async_request_restart_db(db_name):
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url=compose_url(SYS_IP, SYS_PORT) + "/" + db_name + "/restart")
+    return response
+
