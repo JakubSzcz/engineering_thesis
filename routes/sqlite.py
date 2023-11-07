@@ -8,7 +8,7 @@ import os
 
 
 # packages imports
-from models import user, openapi, querry_db
+from models import user, openapi, querry_db, http_custom_error
 from config import *
 from SQL_engines.SQLite import SQLite
 
@@ -179,7 +179,7 @@ def restart_sqlite():
 
 
 @sqli_router.post("/insert", description="Insert data SQLite database", status_code=201)
-async def insert_postgres(
+async def insert_sqlite(
     title_basics: Annotated[querry_db.InsertTitleBasic | None, Body()] = None,
     name_basics: Annotated[querry_db.InsertNameBasic | None, Body()] = None,
     title_episode: Annotated[querry_db.InsertTitleEpisode | None, Body()] = None
@@ -216,7 +216,7 @@ async def insert_postgres(
         if title_episode:
             no_data = False
             db.execute(
-                tables_insert_sqli["title_episode"].format(
+                tables_insert_sqli["title_episodes"].format(
                     tconst=title_episode.tconst, parentTconst=title_episode.parentTconst,
                     seasonNumber=int(title_episode.seasonNumber), episodeNumber=int(title_episode.episodeNumber)
                 )
@@ -224,14 +224,11 @@ async def insert_postgres(
 
         db.commit()
 
-    except sqlite3.Error.sqlite_errorcode as er:
-        if er == 2067:
+    except sqlite3.Error as er:
+        if er.sqlite_errorcode == 1555:
             print("[ERROR] There is already record with such id in the database")
             db.commit()
-            raise HTTPException(
-                status_code=500,
-                detail="Such record already exists."
-            )
+            raise http_custom_error.record_duplicated
         else:
             print("[ERROR] Can not connect to the database")
             raise HTTPException(

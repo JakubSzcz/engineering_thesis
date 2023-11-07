@@ -25,7 +25,7 @@ try:
     users = db["users"]
     title_basics_collection = db["title_basics"]
     name_basics_collection = db["name_basics"]
-    title_episodes_collection = db["title_episodes"]
+    title_episodes_collection = db["title_episode"]
 except ServerSelectionTimeoutError as e:
     print("[ERROR] Can not connect to the database")
     raise e
@@ -202,7 +202,7 @@ async def insert_mongo(
     try:
 
         # insert data if provided
-        if title_basics:
+        if title_basics is not None:
             no_data = False
             title_basics_collection.insert_one({
                 "tconst": title_basics.tconst, "titleType": title_basics.titleType,
@@ -212,7 +212,7 @@ async def insert_mongo(
                 "genres": title_basics.genres
             })
 
-        if name_basics:
+        if name_basics is not None:
             no_data = False
             name_basics_collection.insert_one({
                 "nconst": name_basics.nconst, "primaryName": name_basics.primaryName,
@@ -220,9 +220,9 @@ async def insert_mongo(
                 "primaryProfession": name_basics.primaryProfession, "knownForTitles": name_basics.knownForTitles
             })
 
-        if title_episode:
+        if title_episode is not None:
             no_data = False
-            title_episodes_collection({
+            title_episodes_collection.insert_one({
                 "tconst": title_episode.tconst, "parentTconst": title_episode.parentTconst,
                 "seasonNumber": int(title_episode.seasonNumber), "episodeNumber": int(title_episode.episodeNumber)
             })

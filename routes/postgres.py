@@ -4,7 +4,7 @@ from typing import Annotated, List
 import psycopg2.errors
 
 # packages imports
-from models import user, openapi, querry_db
+from models import user, openapi, querry_db, http_custom_error
 from SQL_engines.PostgreSQL import PostgreSQL
 from config import *
 
@@ -21,9 +21,9 @@ db = PostgreSQL()
 # ### endpoints ###
 @psql_router.get("/user/validate", description="Validates whether user exists in PostgreSQL",
                  response_description="Returns flag and hashed_password if user exists", status_code=200,
-                  responses={
+                 responses={
                       500: openapi.cannot_connect_to_db
-                  })
+                 })
 async def validate_user(
         user_username: Annotated[str, Header(example="abcdefgh12345678", min_length=16, max_length=32,
                                              title="Client username", description="Unique char sequence provided by the"
@@ -53,10 +53,10 @@ async def validate_user(
 
 @psql_router.get("/user", description="Returns all the information stored about users or specified user",
                  response_description="Returns information retrieved from the database", status_code=200,
-                  responses={
+                 responses={
                       404: openapi.no_username_found,
                       500: openapi.cannot_connect_to_db
-                  })
+                 })
 async def get_user_info(
         username: Annotated[str | None, Query(title="Username",
                                               description="Username by which you can retrieve its info from database")]
@@ -109,10 +109,10 @@ async def get_user_info(
 
 
 @psql_router.post("/user", status_code=201, description="Create new user",
-                 responses={
+                  responses={
                     201: openapi.new_user_created,
                     500: openapi.cannot_connect_to_db
-                 })
+                  })
 async def insert_user(
         username: Annotated[str, Body(title="Username", description="Unique user username",
                                       examples=["text_test_test_test1"])],
@@ -138,11 +138,11 @@ async def insert_user(
 
 
 @psql_router.delete("/user", status_code=200, description="Delete user from the database by the username",
-                   responses={
+                    responses={
                         200: openapi.user_deleted,
                         404: openapi.no_username_found,
                         500: openapi.cannot_connect_to_db
-                   })
+                    })
 async def delete_user(
         username: Annotated[str, Query(title="Username", description="Unique user username",
                                        examples=["text_test_test_test1"])],
@@ -216,21 +216,23 @@ def restart_postgres():
     return {"message": "Postgres database data set has been reset"}
 
 
-@psql_router.post("/insert", description="Insert data Postgres database", status_code=201)
-async def insert_postgres(
+@psql_router.post("/insert", description="Insert data to the PostgreSQL", status_code=201)
+async def insert(
     title_basics: Annotated[querry_db.InsertTitleBasic | None, Body()] = None,
     name_basics: Annotated[querry_db.InsertNameBasic | None, Body()] = None,
-    title_episode: Annotated[querry_db.InsertTitleEpisode | None, Body()] = None
+    title_episode: Annotated[querry_db.InsertTitleEpisode | None, Body()] = None,
 ):
-    # no data provided flag
-    no_data = True
+    # if none data has been provided, rais an error
+    if title_basics is None and name_basics is None and title_episode is None:
+        raise http_custom_error.lack_of_data
 
     # check which data has been provided
     try:
+
         db.connect(True)
         # insert data if provided
-        if title_basics:
-            no_data = False
+
+        if title_basics is not None:
             db.execute(
                 tables_insert_psql["title_basics"].format(
                     tconst=title_basics.tconst, titleType=title_basics.titleType,
@@ -241,18 +243,17 @@ async def insert_postgres(
                 )
             )
 
-        if name_basics:
-            no_data = False
+        if name_basics is not None:
             db.execute(
                 tables_insert_psql["name_basics"].format(
                     nconst=name_basics.nconst, primaryName=name_basics.primaryName,
                     birthYear=int(name_basics.birthYear), deathYear=int(name_basics.deathYear),
-                    primaryProfession=name_basics.primaryProfession, knownForTitles=name_basics.knownForTitles
+                    primaryProfession=name_basics.primaryProfession.split(","),
+                    knownForTitles=name_basics.knownForTitles.split(",")
                 )
             )
 
-        if title_episode:
-            no_data = False
+        if title_episode is not None:
             db.execute(
                 tables_insert_psql["title_episode"].format(
                     tconst=title_episode.tconst, parentTconst=title_episode.parentTconst,
@@ -261,28 +262,24 @@ async def insert_postgres(
             )
 
         db.commit()
-    except psycopg2.errors.SyntaxError:
-        print("[ERROR] There has been an syntax error while inserting record into db")
+    # syntax error handling
+    except psycopg2.errors.SyntaxError as e:
+        print("[ERROR] There has been a syntax error while inserting record into db")
         db.commit()
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "Invalid SQL syntax while inserting into database.",
+                "error_detail": str(e)
+            })
+    # unique record violation
     except psycopg2.errors.UniqueViolation:
         print("[ERROR] There is already record with such id in the database")
         db.commit()
-        raise HTTPException(
-            status_code=500,
-            detail="Such record already exists."
-        )
+        raise http_custom_error.record_duplicated
+    # cannot connect to db
     except psycopg2.errors.ConnectionException:
         print("[ERROR] Can not connect to the database")
-        raise HTTPException(
-            status_code=500,
-            detail="Can not connect to the database"
-        )
+        raise http_custom_error.cannot_connect_to_db
 
-    # if none data has been provided, rais an error
-    if no_data:
-        raise HTTPException(
-            status_code=422,
-            detail="None of the data to be inserted has been provided"
-        )
-
-    return {"message":  "Record has been inserted successfully."}
+    return {"message": "Record has been inserted successfully."}

@@ -72,26 +72,26 @@ tags_metadata_sys_api = [
 tables_names = ["title_basics", "name_basics", "title_episodes"]
 # POSTGRES
 tables_create_psql = {
-    "title_basics": "CREATE TABLE title_basics ( tconst VARCHAR(255) PRIMARY KEY, titleType VARCHAR(255), primaryTitle "
+    "title_basics": "CREATE TABLE title_basics (tconst VARCHAR(255) PRIMARY KEY, titleType VARCHAR(255), primaryTitle "
                     "VARCHAR(255), originalTitle VARCHAR(255), isAdult BOOLEAN, startYear INTEGER, endYear INTEGER, "
                     "runtimeMinutes INTEGER, genres VARCHAR(255));",
     "name_basics": "CREATE TABLE name_basics (nconst VARCHAR(255) PRIMARY KEY, primaryName VARCHAR(255), birthYear "
                   "INTEGER, deathYear INTEGER, primaryProfession VARCHAR(255)[3], "
                   "knownForTitles VARCHAR(255)[]);",
     "title_episodes": "CREATE TABLE title_episodes (tconst VARCHAR(255) PRIMARY KEY, parentTconst VARCHAR(255) "
-                      "REFERENCES title_basics (tconst), seasonNumber INTEGER, episodeNumber INTEGER);"
+                      ", seasonNumber INTEGER, episodeNumber INTEGER);"
 }
 tables_insert_psql = {
     "title_basics": "INSERT INTO title_basics (tconst, titleType, primaryTitle, originalTitle, isAdult, startYear, "
                     "endYear, runtimeMinutes, genres) VALUES (\'{tconst}\', \'{titleType}\', \'{primaryTitle}\',"
                     " \'{originalTitle}\', \'{isAdult}\', \'{startYear}\', \'{endYear}\',"
                     " \'{runtimeMinutes}\', \'{genres}\')",
-    "name_basics": "INSERT INTO name_basics (nconst, primaryName, birthYear, deathYear, primaryProfession, knownForTitles, )"
-                  " VALUES (\'{nconst}\', \'{primaryName}\', \'{birthYear}\',"
-                  " \'{deathYear}\', \'{primaryProfession}\', \'{knownForTitles}\')",
-    "title_episodes": "INSERT INTO persons (tconst, primaryName, birthYear, deathYear, primaryProfession, knownForTitles, )"
-                  " VALUES (\'{nconst}\', \'{primaryName}\', \'{birthYear}\',"
-                    " \'{deathYear}\', \'{primaryProfession}\', \'{knownForTitles}\')"
+    "name_basics": "INSERT INTO name_basics (nconst, primaryName, birthYear, deathYear, primaryProfession, "
+                   "knownForTitles) VALUES (\'{nconst}\', \'{primaryName}\', \'{birthYear}\',"
+                  " \'{deathYear}\', ARRAY {primaryProfession}, ARRAY {knownForTitles})",
+    "title_episode": "INSERT INTO title_episodes (tconst, parentTconst, seasonNumber, episodeNumber)"
+                  " VALUES (\'{tconst}\', \'{parentTconst}\', \'{seasonNumber}\',"
+                    " \'{episodeNumber}\')"
 }
 
 # REDIS
@@ -147,7 +147,7 @@ tables_create_sqli = {
                   "INTEGER, deathYear INTEGER, primaryProfession TEXT[], "
                   "knownForTitles TEXT[]);",
     "title_episodes": "CREATE TABLE title_episodes (tconst TEXT PRIMARY KEY, parentTconst TEXT "
-                      "REFERENCES title_basics (tconst), seasonNumber INTEGER, episodeNumber INTEGER);",
+                      ", seasonNumber INTEGER, episodeNumber INTEGER);",
     "users": "CREATE TABLE users (user_id INTEGER PRIMARY KEY ASC, username TEXT UNIQUE, password_hashed TEXT, "
                "is_admin INTEGER, creation_date TEXT)"
 }
@@ -156,10 +156,10 @@ tables_insert_sqli = {
                     "endYear, runtimeMinutes, genres) VALUES (\'{tconst}\', \'{titleType}\', \'{primaryTitle}\',"
                     " \'{originalTitle}\', \'{isAdult}\', \'{startYear}\', \'{endYear}\',"
                     " \'{runtimeMinutes}\', \'{genres}\')",
-    "name_basics": "INSERT INTO name_basics (nconst, primaryName, birthYear, deathYear, primaryProfession, knownForTitles, )"
+    "name_basics": "INSERT INTO name_basics (nconst, primaryName, birthYear, deathYear, primaryProfession, "
+                   "knownForTitles)"
                   " VALUES (\'{nconst}\', \'{primaryName}\', \'{birthYear}\',"
                   " \'{deathYear}\', \'{primaryProfession}\', \'{knownForTitles}\')",
-    "title_episodes": "INSERT INTO persons (tconst, primaryName, birthYear, deathYear, primaryProfession, knownForTitles, )"
-                  " VALUES (\'{nconst}\', \'{primaryName}\', \'{birthYear}\',"
-                    " \'{deathYear}\', \'{primaryProfession}\', \'{knownForTitles}\')"
+    "title_episodes": "INSERT INTO title_episodes (tconst, parentTconst, seasonNumber, episodeNumber)"
+                  " VALUES (\'{tconst}\', \'{parentTconst}\', \'{seasonNumber}\', \'{episodeNumber}\')"
 }
