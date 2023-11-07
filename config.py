@@ -47,5 +47,9 @@ tags_metadata_proc_api = [
     {
         "name": "Users",
         "description": "User related operations to all databases like insert, delete and read",
+    },
+    {
+        "name": "Process",
+        "description": "Data processor endpoints",
     }
 ]

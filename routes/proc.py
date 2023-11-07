@@ -1,16 +1,20 @@
 # library imports
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Header, HTTPException, Body
 from typing import Annotated
+import httpx
 import asyncio
+import json
 
 # packages imports
 from utilities import functions as fun
+from models import querry_db, user
+from config import *
 
 
 # ### variables ###
 proc_router = APIRouter(
     prefix="/proc",
-    tags=["proc"],
+    tags=["Process"],
 )
 
 
@@ -23,11 +27,11 @@ async def restart_db(
         redis: Annotated[bool, Header(title="Redis Flag", description="Indicates to restart Redis database",
                                       example="True")],
         postgres: Annotated[bool, Header(title="Postgres Flag", description="Indicates to restart PostgreSQL"
-                                                                                   " database",example="True")],
+                                                                            " database", example="True")],
         mongo: Annotated[bool, Header(title="Mongo Flag", description="Indicates to restart MongoDB database",
                                       example="True")],
         sqlite: Annotated[bool, Header(title="SQLite Flag", description="Indicates to restart SQLite database",
-                                      example="True")]
+                                       example="True")]
 ):
     # verify which db_type has been provided
     db_to_send = []
@@ -67,4 +71,49 @@ async def restart_db(
         return {"message": "Restart of this databases has finished with a success: " + str(db_to_send)}
 
 
+@proc_router.post("/insert", description="Insert data to the provided database", status_code=201)
+async def insert(
+    db_type: Annotated[str, Header(title="Database type", description="Database type destination", example="psql")],
+    correlation_id: Annotated[str, Header(title="Request correlation identifier",
+                                          description="Identifies every unique data insertion request",
+                                          example="psql")],
+    title_basics: Annotated[querry_db.InsertTitleBasic | None, Body()] = None,
+    name_basics: Annotated[querry_db.InsertNameBasic | None, Body()] = None,
+    title_episode: Annotated[querry_db.InsertTitleEpisode | None, Body()] = None,
+):
 
+    # ensure body is correct
+    if title_basics is None and name_basics is None and title_episode is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Required body content not provided."
+        )
+
+    # prepare data
+    # TODO validate if data has no empty fields
+    data = {}
+    if title_basics is not None:
+        data["title_basics"] = title_basics.model_dump()
+
+    if name_basics is not None:
+        data["name_basics"] = name_basics.model_dump()
+
+    if title_episode is not None:
+        data["title_episode"] = title_episode.model_dump()
+
+    # send request
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            url=fun.compose_url(SYS_IP, SYS_PORT) + "/" + str(db_type) + "/insert",
+            json=data
+        )
+
+    # handel responses
+    if response.status_code == 201:
+        return {"correlation_id": correlation_id, "status": "inserted",
+                "db_source": db_type, "message": "Record successfully inserted."}
+    else:
+        raise HTTPException(
+            status_code=response.status_code,
+            detail=response.json()["detail"]
+        )
