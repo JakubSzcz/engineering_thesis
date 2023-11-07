@@ -1,19 +1,22 @@
-# imports
+# library imports
 from fastapi import APIRouter, Header
 from typing import Annotated
 import httpx
 import pandas as pd
 
+# package imports
 from config import *
 from utilities import functions as fun
 
 
+# ### variables ###
 admin_router = APIRouter(
     prefix="/admin",
     tags=["Administration panel"]
 )
 
 
+# ### endpoints ###
 @admin_router.get("/")
 def admin_home():
     return {"status": "this is admin endpoint"}

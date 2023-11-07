@@ -5,9 +5,8 @@ import httpx
 
 # packages import
 from config import *
-from models import user
-from models import openapi
-from utilities import functions
+from models import user, openapi
+from utilities import functions as fun
 
 # ### variables ###
 user_router = APIRouter(
@@ -17,12 +16,6 @@ user_router = APIRouter(
 
 
 # ### functions ###
-def validate_db_type(db_type: str):
-    if db_type not in ["REDIS", "MDB", "PSQL", "SQLi"]:
-        raise HTTPException(
-            status_code=400,
-            detail="Wrong db_type, possible database types: REDIS, MDB, PSQL, SQLi"
-        )
 
 
 # ### endpoints ###
@@ -41,12 +34,12 @@ async def retrieve_user(
                                       example="test_test_test_test")]
 ) -> user.UserResponse:
     # validate database type provided
-    validate_db_type(db_type)
+    fun.validate_db_type(db_type)
     # send request to the proc_api
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(
-                url=functions.compose_url(PROC_IP, PROC_PORT) + "/user?username=" + username,
+                url=fun.compose_url(PROC_IP, PROC_PORT) + "/user?username=" + username,
                 headers=httpx.Headers({
                     "db-type": db_type,
                 })
@@ -78,12 +71,12 @@ async def retrieve_all_users(
                                                                                                  "PSQL", "SQLi"])]
 ) -> user.GetUsersInfoRes:
     # validate database type provided
-    validate_db_type(db_type)
+    fun.validate_db_type(db_type)
     # send request to the proc_api
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(
-                url=functions.compose_url(PROC_IP, PROC_PORT) + "/user",
+                url=fun.compose_url(PROC_IP, PROC_PORT) + "/user",
                 headers=httpx.Headers({
                     "db-type": db_type,
                 })
@@ -117,13 +110,13 @@ async def delete_user(
         username: Annotated[str, Path(title="User id", description="User username unique char sequence",
                                       example="test_test_test_test")]
 ):
-    validate_db_type(db_type)
+    fun.validate_db_type(db_type)
 
     # send request to the proc_api
     async with httpx.AsyncClient() as client:
         try:
             response = await client.delete(
-                url=functions.compose_url(PROC_IP, PROC_PORT) + "/user?username=" + username,
+                url=fun.compose_url(PROC_IP, PROC_PORT) + "/user?username=" + username,
                 headers=httpx.Headers({
                     "db-type": db_type,
                 })
@@ -155,12 +148,12 @@ async def create_user(
                                                                                                  "PSQL", "SQLi"])]
 ) -> user.CreateUserRes:
     # validate database type provided
-    validate_db_type(db_type)
+    fun.validate_db_type(db_type)
     # send request to the proc_api
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
-                url=functions.compose_url(PROC_IP, PROC_PORT) + "/user",
+                url=fun.compose_url(PROC_IP, PROC_PORT) + "/user",
                 headers=httpx.Headers({
                     "db-type": db_type,
                 })

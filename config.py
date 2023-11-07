@@ -44,19 +44,23 @@ Experience API purpose is to handle all user related request and returns to user
 tags_metadata_exp_api = [
     {
         "name": "Administration panel",
-        "description": "Admin operation such us direct access to the database resources",
+        "description": "Admin operation such us direct access to the database resources"
     },
     {
         "name": "Authorization",
-        "description": "Manage authorization related operations, like token generation.",
+        "description": "Manage authorization related operations, like token generation."
     },
     {
         "name": "User",
-        "description": "User related operations to all databases like insert, delete and read",
+        "description": "User related operations to all databases like insert, delete and read"
+    },
+    {
+        "name": "Data",
+        "description": "Databases related CRUD operation"
     }
 ]
 
-#DATABASE
+# DATABASE
 title_basics_path = "../../bazy/title.basics.tsv/data.tsv"
 title_basics_path_url = "../../bazy/title.basics.tsv/data_url.tsv"
 name_basics_path = "../../bazy/name.basics.tsv/data.tsv"

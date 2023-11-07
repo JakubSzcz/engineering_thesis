@@ -1,15 +1,13 @@
 # ### imports ####
-import jose.exceptions
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Annotated
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import datetime
 import httpx
-from jose import jwt
+from jose import jwt, exceptions
 from pydantic import ValidationError
 
-from models import auth
-from models import openapi
+from models import auth, openapi
 from cache import Cache
 from utilities import functions
 from config import *
@@ -31,7 +29,7 @@ async def is_user_authenticated(token: Annotated[str, Depends(oauth2_scheme)]) -
             token=token, key=JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM]
         )
     # raise validation error if token is invalid
-    except (jose.exceptions.JWTError, ValidationError):
+    except (exceptions.JWTError, ValidationError):
         raise HTTPException(
             status_code=403,
             detail="Could not validate credentials",

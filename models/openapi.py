@@ -42,3 +42,21 @@ incorrect_credentials = {
     },
     "description": "Provided credentials was incorrect or does not exists in the selected database"
 }
+
+record_duplication = {
+    "content": {
+        "application/json": {
+            "example": {"detail": "There is already record with such id in the database"}
+        }
+    },
+    "description": "Unique constraints have been violated in database."
+}
+
+non_data_provided = {
+    "content": {
+        "application/json": {
+            "example": {"detail": "None of the data to be inserted has been provided"}
+        }
+    },
+    "description": "Any required body field with data has been provided."
+}
