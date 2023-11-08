@@ -1,9 +1,9 @@
 # library imports
-from fastapi import APIRouter, Header, HTTPException, Body
+from fastapi import APIRouter, Header, HTTPException, Body, Query
 from typing import Annotated
 import httpx
 import asyncio
-import json
+import re
 
 # packages imports
 from utilities import functions as fun
@@ -71,7 +71,7 @@ async def restart_db(
         return {"message": "Restart of this databases has finished with a success: " + str(db_to_send)}
 
 
-@proc_router.post("/insert", description="Insert data to the provided database", status_code=201)
+@proc_router.post("/data", description="Insert data to the provided database", status_code=201)
 async def insert(
     db_type: Annotated[str, Header(title="Database type", description="Database type destination", example="psql")],
     correlation_id: Annotated[str, Header(title="Request correlation identifier",
@@ -104,7 +104,7 @@ async def insert(
     # send request
     async with httpx.AsyncClient() as client:
         response = await client.post(
-            url=fun.compose_url(SYS_IP, SYS_PORT) + "/" + str(db_type) + "/insert",
+            url=fun.compose_url(SYS_IP, SYS_PORT) + "/" + str(db_type) + "/data",
             json=data
         )
 
@@ -117,3 +117,43 @@ async def insert(
             status_code=response.status_code,
             detail=response.json()["detail"]
         )
+
+
+@proc_router.delete("/data")
+async def delete_data(
+        db_type: Annotated[str, Header(title="Database type", description="Database type destination", example="psql")],
+        table_name: Annotated[str, Query(title="Table name", examples=["title_basics"])],
+        record_id: Annotated[str, Query(title="Username", examples=["tt0000004"])]
+):
+
+    # pre validate record_id
+    if not re.match(r"^[tnm][tnm]\d+$", str(record_id)):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid record_id format. Record id should looks like {t/n/m}{t/n/m}XXXXX, X- digit"
+        )
+
+    # route request to the appropriate sys endpoint
+    try:
+        # send request to the sys_api
+        async with httpx.AsyncClient() as client:
+            response = await client.delete(
+                url=fun.compose_url(SYS_IP, SYS_PORT) + "/" + str(db_type) + "/data?table_name=" + str(table_name)
+                + "&record_id=" + str(record_id)
+            )
+
+        # handle responses
+        if response.status_code == 200:
+            return {"message": "Record deleted"}
+        else:
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=response.json()["detail"]
+            )
+    # handel connection error
+    except httpx.ConnectError:
+        raise HTTPException(
+            status_code=500,
+            detail="Cannot connect to the sys_api"
+        )
+
