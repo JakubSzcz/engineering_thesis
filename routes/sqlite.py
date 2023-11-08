@@ -136,6 +136,7 @@ async def delete_user(
     db.execute(f"SELECT user_id FROM users WHERE username = '{username}'")
     db_response = db.get_query_results()
     if not db_response:
+        db.commit()
         raise HTTPException(
             status_code=404,
             detail="No user with a such username"
@@ -167,6 +168,7 @@ def restart_sqlite():
             db.execute(f"DELETE FROM {table_name};")
         db.commit()
     except Exception:
+        db.commit()
         raise HTTPException(
             status_code=500,
             detail={
@@ -178,7 +180,7 @@ def restart_sqlite():
     return {"message": "SQLite database data set has been reset"}
 
 
-@sqli_router.post("/insert", description="Insert data SQLite database", status_code=201)
+@sqli_router.post("/data", description="Insert data SQLite database", status_code=201)
 async def insert_sqlite(
     title_basics: Annotated[querry_db.InsertTitleBasic | None, Body()] = None,
     name_basics: Annotated[querry_db.InsertNameBasic | None, Body()] = None,
@@ -244,3 +246,36 @@ async def insert_sqlite(
         )
 
     return {"message":  "Record has been inserted successfully."}
+
+
+@sqli_router.delete("/data", status_code=200, description="Deletes resource from sqlite")
+async def delete_data_sqlite(
+        table_name: Annotated[str, Query(title="Table name", examples=["title_basics"])],
+        record_id: Annotated[str, Query(title="Username", examples=["tt0000004"])]
+):
+
+    try:
+        # connect to the database and execute query
+        db.connect()
+        # check if user which is to be deleted exist in the database
+        indicator = "nconst" if table_name == "name_basics" else "tconst"
+        db.execute(f"SELECT 1 FROM {table_name} WHERE {indicator} = '{record_id}';")
+        db_response = db.get_query_results()
+        if not db_response:
+            db.commit()
+            raise HTTPException(
+                status_code=404,
+                detail="There is no such record in the database"
+            )
+        else:
+            db.execute(f"DELETE FROM {table_name} WHERE {indicator} = '{record_id}';")
+            db.commit()
+    except sqlite3.Error:
+        print("[ERROR] Can not connect to the database")
+        raise HTTPException(
+            status_code=500,
+            detail="Can not connect to the database"
+        )
+
+    return {"message": "Record deleted"}
+

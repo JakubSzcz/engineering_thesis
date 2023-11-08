@@ -5,9 +5,10 @@ from fastapi import APIRouter, Header, HTTPException, Query, Body
 from typing import Annotated, List
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from redis.commands.search.query import Query as redisQuery
+import random
 
 # packages imports
-from models import user, openapi, querry_db
+from models import user, openapi, querry_db, http_custom_error
 from config import *
 
 
@@ -174,7 +175,7 @@ async def delete_user(
     try:
         db_response = users.search(redisQuery(f"@username:{username}"))
         if len(db_response.docs) != 0:
-            r.hdel(str(db_response.docs[0]["id"]), "username", "password_hashed", "is_admin", "creation_date")
+            r.delete(str(db_response.docs[0]["id"]))
         else:
             raise HTTPException(
                 status_code=404,
@@ -221,7 +222,7 @@ def restart_redis():
     return {"message": "Redis database data set has been reset"}
 
 
-@redis_router.post("/insert", description="Insert data Postgres database", status_code=201)
+@redis_router.post("/data", description="Insert data Postgres database", status_code=201)
 async def insert_redis(
     title_basics: Annotated[querry_db.InsertTitleBasic | None, Body()] = None,
     name_basics: Annotated[querry_db.InsertNameBasic | None, Body()] = None,
@@ -236,28 +237,49 @@ async def insert_redis(
         # insert data if provided
         if title_basics:
             no_data = False
-            r.hset(name=(indexes_create_schema["title_basics"]["prefix"] + str(title_basics.tconst)), mapping={
-                "titleType": title_basics.titleType, "primaryTitle": title_basics.primaryTitle,
-                "originalTitle": title_basics.originalTitle, "isAdult": int(title_basics.isAdult),
-                "startYear": int(title_basics.startYear), "endYear": int(title_basics.endYear),
-                "runtimeMinutes": int(title_basics.runtimeMinutes), "genres": title_basics.genres
-            })
+            # check if data already exists
+            db_response = indexes["title_basics"].search(redisQuery(f"@tconst:{title_basics.tconst}"))
+            if len(db_response.docs) == 0:
+                # insert data
+                r.hset(name=("title_basics:" + str(int(datetime.utcnow().timestamp()) +
+                                             random.randint(1,9999))), mapping={
+                       "tconst": title_basics.tconst, "titleType": title_basics.titleType,
+                       "primaryTitle": title_basics.primaryTitle,
+                       "originalTitle": title_basics.originalTitle, "isAdult": int(title_basics.isAdult),
+                       "startYear": int(title_basics.startYear), "endYear": int(title_basics.endYear),
+                       "runtimeMinutes": int(title_basics.runtimeMinutes), "genres": title_basics.genres
+                    })
+            else:
+                raise http_custom_error.record_duplicated
 
         if name_basics:
             no_data = False
-            r.hset(name=(indexes_create_schema["name_basics"]["prefix"] + str(name_basics.nconst)), mapping={
-                "primaryName": name_basics.primaryName, "birthYear": int(name_basics.birthYear),
-                "deathYear": int(name_basics.deathYear), "primaryProfession": name_basics.primaryProfession,
-                "knownForTitles": name_basics.knownForTitles
-            })
+            # check if data already exists
+            db_response = indexes["name_basics"].search(redisQuery(f"@nconst:{name_basics.nconst}"))
+            if len(db_response.docs) == 0:
+                # insert data
+                r.hset(name=("name_basics:" + str(int(datetime.utcnow().timestamp()) +
+                                                  random.randint(1,9999))), mapping={
+                        "tconst": name_basics.nconst, "primaryName": name_basics.primaryName,
+                        "birthYear": int(name_basics.birthYear), "deathYear": int(name_basics.deathYear),
+                        "primaryProfession": name_basics.primaryProfession, "knownForTitles": name_basics.knownForTitles
+                })
+            else:
+                raise http_custom_error.record_duplicated
 
         if title_episode:
             no_data = False
-            r.hset(name=(indexes_create_schema["title_episode"]["prefix"] + str(title_episode.tconst)), mapping={
-                "parentTconst": title_episode.parentTconst, "seasonNumber": int(title_episode.seasonNumber),
-                "episodeNumber": int(title_episode.episodeNumber)
-            })
-
+            # check if data already exists
+            db_response = indexes["title_episodes"].search(redisQuery(f"@tconst:{title_episode.tconst}"))
+            if len(db_response.docs) == 0:
+                # insert data
+                r.hset(name=("title_episodes:" + str(int(datetime.utcnow().timestamp()) +
+                                                     random.randint(1,9999))), mapping={
+                        "tconst": title_episode.tconst, "parentTconst": title_episode.parentTconst,
+                        "seasonNumber": int(title_episode.seasonNumber), "episodeNumber": int(title_episode.episodeNumber)
+                })
+            else:
+                raise http_custom_error.record_duplicated
     except redis.exceptions.ConnectionError:
         print("[ERROR] Can not connect to the database")
         raise HTTPException(
@@ -274,3 +296,30 @@ async def insert_redis(
 
     return {"db_type": "redis", "message":  "Record has been inserted successfully."}
 
+
+@redis_router.delete("/data", status_code=200, description="Deletes resource from redis")
+async def delete_data_redis(
+        table_name: Annotated[str, Query(title="Table name", examples=["title_basics"])],
+        record_id: Annotated[str, Query(title="Username", examples=["tt0000004"])]
+):
+    # connect to index
+    index = indexes[table_name]
+
+    # connect to the database and execute query
+    try:
+        indicator = "nconst" if table_name == "name_basics" else "tconst"
+        db_response = index.search(redisQuery(f"@{indicator}:{record_id}"))
+        if len(db_response.docs) != 0:
+            r.delete(str(db_response.docs[0]["id"]))
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail="There is no such record in the database"
+            )
+    except redis.exceptions.ConnectionError:
+        print("[ERROR] Can not connect to the database")
+        raise HTTPException(
+            status_code=500,
+            detail="Can not connect to the database"
+        )
+    return {"message": "Record deleted"}

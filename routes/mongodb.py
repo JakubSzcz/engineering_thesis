@@ -25,7 +25,7 @@ try:
     users = db["users"]
     title_basics_collection = db["title_basics"]
     name_basics_collection = db["name_basics"]
-    title_episodes_collection = db["title_episode"]
+    title_episodes_collection = db["title_episodes"]
 except ServerSelectionTimeoutError as e:
     print("[ERROR] Can not connect to the database")
     raise e
@@ -189,7 +189,7 @@ def restart_mongo():
     return {"message": "MongoDB database data set has been reset"}
 
 
-@mdb_router.post("/insert", description="Insert data MongoDB database", status_code=201)
+@mdb_router.post("/data", description="Insert data MongoDB database", status_code=201)
 async def insert_mongo(
     title_basics: Annotated[querry_db.InsertTitleBasic | None, Body()] = None,
     name_basics: Annotated[querry_db.InsertNameBasic | None, Body()] = None,
@@ -242,3 +242,28 @@ async def insert_mongo(
         )
 
     return {"message":  "Record has been inserted successfully."}
+
+
+@mdb_router.delete("/data", status_code=200, description="Deletes resource from mongodb")
+async def delete_data_mongo(
+        table_name: Annotated[str, Query(title="Table name", examples=["title_basics"])],
+        record_id: Annotated[str, Query(title="Username", examples=["tt0000004"])]
+):
+
+    # connect to the database and execute query
+    try:
+        indicator = "nconst" if table_name == "name_basics" else "tconst"
+        if db[str(table_name)].find_one({indicator: record_id}):
+            db[str(table_name)].delete_one({indicator: record_id})
+        else:
+            raise HTTPException(
+                status_code=404,
+                detail="There is no such record in the database"
+            )
+    except ServerSelectionTimeoutError:
+        print("[ERROR] Can not connect to the database")
+        raise HTTPException(
+            status_code=500,
+            detail="Can not connect to the database"
+        )
+    return {"message": "Record deleted"}

@@ -33,3 +33,10 @@ class InsertTitleEpisode(BaseModel):
     parentTconst: str = Field(title="Parent Title Episode/Basic Primary Key", examples=["tt0000001"])
     seasonNumber: int = Field(title="Season Number", examples=[2])
     episodeNumber: int = Field(title="Episode Number", examples=[16])
+
+
+redis_models_fields = {
+    "title_basics": "tconst, titleType, primaryTitle, originalTitle, isAdult, startYear, endYear, runtimeMinutes, genres",
+    "name_basics": "nconst, primaryName, birthYear, deathYear, primaryProfession, knownForTitles",
+    "title_episodes": "tconst, parentTconst, seasonNumber, episodeNumber"
+}

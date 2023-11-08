@@ -12,7 +12,7 @@ record_duplicated = HTTPException(
 
 cannot_connect_to_db = HTTPException(
             status_code=521,
-            detail="Such record already exists in the database and violets unique constraints."
+            detail="Cannot connect to the database."
 )
 
 lack_of_data = HTTPException(

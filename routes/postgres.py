@@ -216,7 +216,7 @@ def restart_postgres():
     return {"message": "Postgres database data set has been reset"}
 
 
-@psql_router.post("/insert", description="Insert data to the PostgreSQL", status_code=201)
+@psql_router.post("/data", description="Insert data to the PostgreSQL", status_code=201)
 async def insert(
     title_basics: Annotated[querry_db.InsertTitleBasic | None, Body()] = None,
     name_basics: Annotated[querry_db.InsertNameBasic | None, Body()] = None,
@@ -283,3 +283,44 @@ async def insert(
         raise http_custom_error.cannot_connect_to_db
 
     return {"message": "Record has been inserted successfully."}
+
+
+@psql_router.delete("/data", status_code=200, description="Deletes resource from postgres")
+async def delete_data_postgres(
+        table_name: Annotated[str, Query(title="Table name", examples=["title_basics"])],
+        record_id: Annotated[str, Query(title="Username", examples=["tt0000004"])]
+):
+    # connect to the database
+    try:
+        # execute query
+        db.connect(True)
+        indicator = "nconst" if table_name == "name_basics" else "tconst"
+        # check if record exists in database
+        db.execute(f"SELECT 1 FROM {table_name} WHERE {indicator} = '{record_id}';")
+
+        if db.get_query_results():
+            db.execute(f"DELETE FROM {table_name} WHERE {indicator} = '{record_id}';")
+            db.commit()
+        else:
+            db.commit()
+            raise HTTPException(
+                status_code=404,
+                detail="There is no such record in the database"
+            )
+
+    # syntax error handling
+    except psycopg2.errors.SyntaxError as e:
+        print("[ERROR] There has been a syntax error while inserting record into db")
+        db.commit()
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "message": "Invalid SQL syntax while inserting into database.",
+                "error_detail": str(e)
+            })
+    # cannot connect to db
+    except psycopg2.errors.ConnectionException:
+        print("[ERROR] Can not connect to the database")
+        raise http_custom_error.cannot_connect_to_db
+
+    return {"message": "Record deleted"}

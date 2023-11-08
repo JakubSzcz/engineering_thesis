@@ -97,7 +97,8 @@ tables_insert_psql = {
 # REDIS
 indexes_create_schema = {
     "title_basics": {
-        "schema": (
+        "schema": [
+            TextField(name='tconst'),
             TextField(name='titleType'),
             TextField(name='primaryTitle'),
             TextField(name='originalTitle'),
@@ -105,27 +106,29 @@ indexes_create_schema = {
             NumericField(name='startYear'),
             NumericField(name='endYear'),
             NumericField(name='runtimeMinutes'),
-            TextField(name='genres'),
-        ),
-        "prefix": "tconst:"
+            TextField(name='genres')
+        ],
+        "prefix": "title_basics:"
     },
     "name_basics": {
-        "schema": (
+        "schema": [
+            TextField(name='nconst'),
             TextField(name='primaryName'),
             NumericField(name='birthYear'),
             NumericField(name='deathYear'),
             TagField(name='primaryProfession'),
             TagField(name='knownForTitles')
-        ),
-        "prefix": "nconst:"
+        ],
+        "prefix": "name_basics:"
     },
     "title_episodes": {
-        "schema": (
+        "schema": [
+            TextField(name='tconst'),
             TextField(name='parentTconst'),
             NumericField(name='seasonNumber'),
-            NumericField(name='episodeNumber'),
-        ),
-        "prefix": "tconst:"
+            NumericField(name='episodeNumber')
+        ],
+        "prefix": "title_episodes:"
     },
     "users": {
         "schema": (
