@@ -42,3 +42,11 @@ class InsertResponses(BaseModel):
     correlation_id: str = Field(title="Correlation_id",
                                 examples=["tb:tt0000004te:tt0043426nb:nm0000004ts:1699378899tf:9903"])
     insertion_time: str = Field(title="Insertion Time", examples=["0:00:02.243829"])
+
+
+class DeleteResponses(BaseModel):
+    message: str = Field(title="Message information", examples=["Record successfully deleted"],
+                         default="Record successfully deleted")
+    db_type: str = Field(title="Database type", examples=["PSQL"])
+    table_name: str = Field(title="Table name", examples=["title_basics"])
+    record_id: str = Field(title="Record ID", examples=["tt0000001"])
