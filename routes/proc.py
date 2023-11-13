@@ -1,5 +1,5 @@
 # library imports
-from fastapi import APIRouter, Header, HTTPException, Body, Query
+from fastapi import APIRouter, Header, HTTPException, Body, Query, Depends
 from typing import Annotated
 import httpx
 import asyncio
@@ -166,7 +166,7 @@ async def get_data(
         db_type: Annotated[str, Header(title="Database type", description="Database type destination", example="psql")],
         filters: Annotated[bool, Query(title="Filters indicator flag", examples=["True"])],
         table_name: Annotated[str | None, Query(title="Table name", examples=["title_basics"])] = None,
-        record_id: Annotated[str | None, Query(title="Username", examples=["tt0000004"])] = None
+        record_id: Annotated[str | None, Query(title="Record identifier", examples=["tt0000004"])] = None
 ):
     # validate db_type
     fun.validate_db_type(db_type)
@@ -224,5 +224,51 @@ async def get_data(
         raise HTTPException(
             status_code=response.status_code,
             detail=response.json()["detail"]
+        )
+
+
+@proc_router.patch("/data", status_code=200,
+                 description="Update specified record data in the table", response_description="Update confirmation")
+async def update_data(
+    db_type: Annotated[str, Header(title="Database type", description="Database type destination", example="psql")],
+    table_name: Annotated[str, Query(title="Table name", examples=["title_basics"])],
+    record_id: Annotated[str, Query(title="Record identifier", examples=["tt0000004"])],
+    data: Annotated[dict, Depends(fun.validate_db_structure)]
+) -> querry_db.PatchRecordResponses:
+
+    # validate db_type
+    fun.validate_db_type(db_type)
+
+    # validate table name
+    fun.validate_table_name(table_name)
+
+    # check if record exist in database
+    async with httpx.AsyncClient() as client:
+        old_data_response = await client.get(
+            url=fun.compose_url(SYS_IP, SYS_PORT) + f"/{db_type}/data/{table_name}/{record_id}"
+        )
+
+    if old_data_response.status_code == 200:
+        # send request to insert new data
+        async with httpx.AsyncClient() as client:
+            new_data_response = await client.patch(
+                url=fun.compose_url(SYS_IP, SYS_PORT) + f"/{db_type}/data/{table_name}/{record_id}",
+                json=data["data"]
+            )
+
+        if new_data_response.status_code == 204:
+            return querry_db.PatchRecordResponses(
+                old_data=old_data_response.json()["data"],
+                new_data=data["data"]
+            )
+        else:
+            raise HTTPException(
+                status_code=new_data_response.status_code,
+                detail=new_data_response.json()["detail"]
+            )
+    else:
+        raise HTTPException(
+            status_code=old_data_response.status_code,
+            detail=old_data_response.json()["detail"]
         )
 

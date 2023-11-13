@@ -2,8 +2,12 @@
 from passlib.context import CryptContext
 import httpx
 from config import *
-from fastapi import HTTPException
+from fastapi import HTTPException, Body
+from typing import Annotated
+from pydantic import ValidationError
 
+
+from models import querry_db
 
 # compose valid url
 def compose_url(ip: str, port: str,):
@@ -48,3 +52,72 @@ def validate_table_name(table_name: str):
             status_code=422,
             detail="Invalid table name. Possible names: [title_basics, title_episodes, name_basics]"
         )
+
+
+# validate structure of the data provided
+async def validate_db_structure(data: Annotated[dict, Body(title="Data to be updated",
+                                                           description="Body of the data to be updated in the database")]):
+    valid_field = False
+
+    if data["table_name"] == "title_basics":
+        # check if any valid field was provided
+        for key in data["data"]:
+            if key in models_fields["title_basics"]:
+                valid_field = True
+                break
+        if valid_field:
+            try:
+                querry_db.UpdateTitleBasic(**data["data"])
+            except ValidationError:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid data provided"
+                )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="No valid field was provided"
+            )
+
+    elif data["table_name"] == "name_basics":
+
+        # check if any valid field was provided
+        for key in data["data"]:
+            if key in models_fields["name_basics"]:
+                valid_field = True
+                break
+        if valid_field:
+            try:
+                querry_db.UpdateNameBasic(**data["data"])
+            except ValidationError:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid data provided"
+                )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="No valid field was provided"
+            )
+
+    elif data["table_name"] == "title_episodes":
+
+        # check if any valid field was provided
+        for key in data["data"]:
+            if key in models_fields["title_episodes"]:
+                valid_field = True
+                break
+        if valid_field:
+            try:
+                querry_db.UpdateTitleEpisode(**data["data"])
+            except ValidationError:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid data provided"
+                )
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="No valid field was provided"
+            )
+    return data

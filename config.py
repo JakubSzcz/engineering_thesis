@@ -57,3 +57,9 @@ tags_metadata_proc_api = [
 # DATABASES
 tables_names = ["title_basics", "name_basics", "title_episodes"]
 db_types = ["redis", "mdb", "psql", "sqlite"]
+
+models_fields = {
+    "title_basics": "titleType, primaryTitle, originalTitle, isAdult, startYear, endYear, runtimeMinutes, genres",
+    "name_basics": "primaryName, birthYear, deathYear, primaryProfession, knownForTitles",
+    "title_episodes": "parentTconst, seasonNumber, episodeNumber"
+}
