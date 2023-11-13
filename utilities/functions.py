@@ -2,6 +2,7 @@
 from passlib.context import CryptContext
 import httpx
 from config import *
+from fastapi import HTTPException
 
 
 # compose valid url
@@ -30,3 +31,20 @@ async def send_async_request_restart_db(db_name):
         response = await client.get(url=compose_url(SYS_IP, SYS_PORT) + "/" + db_name + "/restart")
     return response
 
+
+# validate database type provided
+def validate_db_type(db_type: str):
+    if db_type not in db_types:
+        raise HTTPException(
+            status_code=400,
+            detail="Wrong db_type, possible database types: ['redis', 'mdb', 'psql', 'sqlite']"
+        )
+
+
+# validate table name
+def validate_table_name(table_name: str):
+    if table_name not in tables_names:
+        raise HTTPException(
+            status_code=422,
+            detail="Invalid table name. Possible names: [title_basics, title_episodes, name_basics]"
+        )

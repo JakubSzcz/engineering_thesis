@@ -65,10 +65,10 @@ async def restart_db(
     if len(db_failed) > 0:
         raise HTTPException(
             status_code=500,
-            detail="Restart of this database failed: " + str(db_failed)
+            detail=f"Restart of this database failed: {db_failed}"
         )
     else:
-        return {"message": "Restart of this databases has finished with a success: " + str(db_to_send)}
+        return {"message": f"Restart of this databases has finished with a success: {db_to_send}"}
 
 
 @proc_router.post("/data", description="Insert data to the provided database", status_code=201)
@@ -81,6 +81,8 @@ async def insert(
     name_basics: Annotated[querry_db.InsertNameBasic | None, Body()] = None,
     title_episode: Annotated[querry_db.InsertTitleEpisode | None, Body()] = None,
 ):
+    # validate db_type
+    fun.validate_db_type(db_type)
 
     # ensure body is correct
     if title_basics is None and name_basics is None and title_episode is None:
@@ -89,8 +91,6 @@ async def insert(
             detail="Required body content not provided."
         )
 
-    # prepare data
-    # TODO validate if data has no empty fields
     data = {}
     if title_basics is not None:
         data["title_basics"] = title_basics.model_dump()
@@ -104,7 +104,7 @@ async def insert(
     # send request
     async with httpx.AsyncClient() as client:
         response = await client.post(
-            url=fun.compose_url(SYS_IP, SYS_PORT) + "/" + str(db_type) + "/data",
+            url=fun.compose_url(SYS_IP, SYS_PORT) + f"/{db_type}/data",
             json=data
         )
 
@@ -125,6 +125,10 @@ async def delete_data(
         table_name: Annotated[str, Query(title="Table name", examples=["title_basics"])],
         record_id: Annotated[str, Query(title="Username", examples=["tt0000004"])]
 ):
+    # validate db_type
+    fun.validate_db_type(db_type)
+    # validate table name
+    fun.validate_table_name(table_name)
 
     # pre validate record_id
     if not re.match(r"^[tnm][tnm]\d+$", str(record_id)):
@@ -138,8 +142,7 @@ async def delete_data(
         # send request to the sys_api
         async with httpx.AsyncClient() as client:
             response = await client.delete(
-                url=fun.compose_url(SYS_IP, SYS_PORT) + "/" + str(db_type) + "/data?table_name=" + str(table_name)
-                + "&record_id=" + str(record_id)
+                url=fun.compose_url(SYS_IP, SYS_PORT) + f"/{db_type}/data?table_name={table_name}&record_id={record_id}"
             )
 
         # handle responses
@@ -155,5 +158,71 @@ async def delete_data(
         raise HTTPException(
             status_code=500,
             detail="Cannot connect to the sys_api"
+        )
+
+
+@proc_router.get("/data")
+async def get_data(
+        db_type: Annotated[str, Header(title="Database type", description="Database type destination", example="psql")],
+        filters: Annotated[bool, Query(title="Filters indicator flag", examples=["True"])],
+        table_name: Annotated[str | None, Query(title="Table name", examples=["title_basics"])] = None,
+        record_id: Annotated[str | None, Query(title="Username", examples=["tt0000004"])] = None
+):
+    # validate db_type
+    fun.validate_db_type(db_type)
+    # route request to the appropriate sys endpoint
+    try:
+        # retrieved filters
+        if filters:
+            # validate table name
+            fun.validate_table_name(table_name)
+            # record_id handling
+            if record_id is not None:
+                # pre validate record_id
+                if not re.match(r"^[tnm][tnm]\d+$", str(record_id)):
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Invalid record_id format. Record id should looks like {t/n/m}{t/n/m}XXXXX, X- digit"
+                    )
+
+                # send request to the sys_api about record_id related resource
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(
+                        url=fun.compose_url(SYS_IP, SYS_PORT) + f"/{db_type}/data/{table_name}/{record_id}"
+                    )
+            # table_name handling
+            else:
+                # send request to the sys_api about table related resource
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(
+                        url=fun.compose_url(SYS_IP, SYS_PORT) + f"/{db_type}/data/{table_name}"
+                    )
+        # all resource handling
+        else:
+            # send request to the sys_api about all resources
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    url=fun.compose_url(SYS_IP, SYS_PORT) + f"/{db_type}/data"
+                )
+
+    # handel connection error
+    except httpx.ConnectError:
+        raise HTTPException(
+            status_code=500,
+            detail="Cannot connect to the sys_api"
+        )
+    # handle responses
+    if response.status_code == 200 and not filters:
+        return {"data": {
+            "title_basics": response.json()["data"]["title_basics"],
+            "title_episodes": response.json()["data"]["title_episodes"],
+            "name_basics": response.json()["data"]["name_basics"]
+        }}
+    elif response.status_code == 200 and filters:
+        return {"data": response.json()["data"]}
+    else:
+        raise HTTPException(
+            status_code=response.status_code,
+            detail=response.json()["detail"]
         )
 

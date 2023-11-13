@@ -13,7 +13,7 @@ from config import *
 app = FastAPI(
     title="Process API (PROC_API)",
     description=proc_description,
-    summary="Process layer of the microservice.",
+    summary="The Process microservice.",
     version="1.0",
     openapi_tags=tags_metadata_proc_api
 )

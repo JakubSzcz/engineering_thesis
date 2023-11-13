@@ -1,7 +1,7 @@
 # libraries imports
 import random
 from fastapi import APIRouter, Header, HTTPException, Query
-from utilities import functions
+from utilities import functions as fun
 from typing import Annotated
 import httpx
 import secrets
@@ -16,10 +16,10 @@ from models import openapi
 
 # ### variables ###
 user_router = APIRouter(
-    prefix="/user",
+    prefix="/users",
     tags=["Users"],
 )
-hash_context = functions.HashContext()
+hash_context = fun.HashContext()
 
 
 # ### functions ###
@@ -40,22 +40,26 @@ def generate_random_string():
 async def get_user(
     db_type: Annotated[str, Header(title="Database type",
                                    description="Select database you want to retrieve users info from",
-                                   examples=["REDIS", "MDB", "PSQL", "SQLi"])],
+                                   examples=['redis', 'mdb', 'psql', 'sqlite'])],
     username: Annotated[str | None, Query(title="Username", description="Username by which you can retrieve "
                                                                         "its info from database")] = None
 ) -> UserToExpRes:
+
+    # validate db_type
+    fun.validate_db_type(db_type)
+
     # send request to the sys api
     async with httpx.AsyncClient() as client:
         try:
             # all users
             if username is None:
                 response = await client.get(
-                    url=functions.compose_url(SYS_IP, SYS_PORT) + "/" + DatabaseType[db_type].value + "/user"
+                    url=fun.compose_url(SYS_IP, SYS_PORT) + "/" + db_type + "/users"
                 )
             # single user by username
             else:
                 response = await client.get(
-                    url=functions.compose_url(SYS_IP, SYS_PORT) + "/" + DatabaseType[db_type].value + "/user",
+                    url=fun.compose_url(SYS_IP, SYS_PORT) + "/" + db_type + "/users",
                     params=httpx.QueryParams({
                         "username": username,
                     })
@@ -87,10 +91,13 @@ async def get_user(
                   })
 async def create_user(
     db_type: Annotated[str, Header(title="Database type",
-                                   description="Indicates database in which users will be created: ['REDIS', 'MDB',"
-                                               " 'PSQL', 'SQLi']",
-                                   examples=["REDIS", "MDB", "PSQL", "SQLi"])]
+                                   description="Indicates database in which users will be created: ['redis', 'mdb', "
+                                               "'psql', 'sqlite']",
+                                   examples=['redis', 'mdb', 'psql', 'sqlite'])]
 ) -> CreateUserRes:
+
+    # validate db_type
+    fun.validate_db_type(db_type)
 
     # generate credentials accordingly to the database type
     username = generate_random_string()
@@ -114,7 +121,7 @@ async def create_user(
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
-                url=functions.compose_url(SYS_IP, SYS_PORT) + "/" + DatabaseType[db_type].value + "/user",
+                url=fun.compose_url(SYS_IP, SYS_PORT) + "/" + db_type + "/users",
                 json=data
             )
         # no connection to the sys api handling
@@ -142,16 +149,20 @@ async def create_user(
                     })
 async def delete_user(
         db_type: Annotated[str, Header(title="Database type", description="Select database you want to delete user "
-                                                                          "from: ['REDIS', 'MDB', 'PSQL', 'SQLi']",
-                                       examples=["REDIS", "MDB", "PSQL", "SQLi"])],
+                                                                          "from: ['redis', 'mdb', 'psql', 'sqlite']",
+                                       examples=['redis', 'mdb', 'psql', 'sqlite'])],
         username: Annotated[str, Query(title="Username", description="Username by which user will be deleted "
                                                                      "from the database")]
 ):
+
+    # validate db_type
+    fun.validate_db_type(db_type)
+
     async with httpx.AsyncClient() as client:
         try:
             # send request to the sys_api
             response = await client.delete(
-                url=functions.compose_url(SYS_IP, SYS_PORT) + "/" + DatabaseType[db_type].value + "/user",
+                url=fun.compose_url(SYS_IP, SYS_PORT) + "/" + db_type + "/users",
                 params=httpx.QueryParams({
                     "username": username,
                 })

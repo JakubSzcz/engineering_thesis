@@ -53,3 +53,7 @@ tags_metadata_proc_api = [
         "description": "Data processor endpoints",
     }
 ]
+
+# DATABASES
+tables_names = ["title_basics", "name_basics", "title_episodes"]
+db_types = ["redis", "mdb", "psql", "sqlite"]
