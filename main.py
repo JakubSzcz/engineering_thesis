@@ -13,7 +13,7 @@ from routes import sqlite
 app = FastAPI(
     title="System API (SYS_API)",
     description=sys_description,
-    summary="System layer of the microservice.",
+    summary="The system microservice.",
     version="1.0",
     openapi_tags=tags_metadata_sys_api
 )

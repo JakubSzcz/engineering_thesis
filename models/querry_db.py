@@ -40,3 +40,11 @@ redis_models_fields = {
     "name_basics": "nconst, primaryName, birthYear, deathYear, primaryProfession, knownForTitles",
     "title_episodes": "tconst, parentTconst, seasonNumber, episodeNumber"
 }
+
+redis_models_fields_tuple = {
+    "title_basics": ("@tconst", "@titleType", "@primaryTitle", "@originalTitle", "@isAdult", "@startYear",
+                     "@endYear", "@runtimeMinutes", "@genres"),
+    "name_basics": ("@nconst", "@primaryName", "@birthYear", "@deathYear", "@primaryProfession",
+                     "@knownForTitles"),
+    "title_episodes": ("@tconst", "@parentTconst", "@seasonNumber", "@episodeNumber")
+}

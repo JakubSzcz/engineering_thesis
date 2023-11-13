@@ -12,6 +12,7 @@ class SQLite:
     def connect(self):
         if self.conn is None and self.cur is None:
             self.conn = sqlite3.connect("./SQL_engines/sqlitedb.db")
+            self.conn.row_factory = sqlite3.Row
             self.cur = self.conn.cursor()
         else:
             raise ConnectionAlreadyEstablishedException

@@ -1,7 +1,7 @@
 # libraries imports
 import sqlite3
 
-from fastapi import APIRouter, Header, HTTPException, Query, Body
+from fastapi import APIRouter, Header, HTTPException, Query, Body, Path
 from typing import Annotated, List
 from datetime import datetime
 import os
@@ -56,7 +56,7 @@ async def validate_user(
         return user.UserExistsRes(exist=True, password_hashed=db_response[0][2])
 
 
-@sqli_router.get("/user", description="Returns all the information stored about users or specified user",
+@sqli_router.get("/users", description="Returns all the information stored about users or specified user",
                  response_description="Returns information retrieved from the database", status_code=200,
                  responses={
                      404: openapi.database_empty
@@ -102,7 +102,7 @@ async def get_user_info(
                                    is_admin=db_response[3], creation_date=db_response[2])
 
 
-@sqli_router.post("/user", status_code=201, description="Create new user",
+@sqli_router.post("/users", status_code=201, description="Create new user",
                   responses={
                       201: openapi.new_user_created
                   })
@@ -121,7 +121,7 @@ async def insert_user(
     return {"message": "New user created in SQLite"}
 
 
-@sqli_router.delete("/user", status_code=200, description="Delete user from the database by the username",
+@sqli_router.delete("/users", status_code=200, description="Delete user from the database by the username",
                     responses={
                         200: openapi.user_deleted,
                         404: openapi.no_username_found
@@ -279,3 +279,73 @@ async def delete_data_sqlite(
 
     return {"message": "Record deleted"}
 
+
+@sqli_router.get("/data", status_code=200, description="Get all resources from sqlite")
+async def get_all_data_sqlite(
+):
+    # connect to the database
+    try:
+        data = {}
+        # execute query
+        db.connect()
+        for table in tables_names:
+            db.execute(f"SELECT * FROM {table};")
+            data[table] = db.get_query_results()
+        db.commit()
+
+    # cannot connect to db
+    except sqlite3.Error:
+        print("[ERROR] Can not connect to the database")
+        raise http_custom_error.cannot_connect_to_db
+
+    return {"data": {
+        "title_basics": data["title_basics"],
+        "title_episodes": data["title_episodes"],
+        "name_basics": data["name_basics"]
+    }}
+
+
+@sqli_router.get("/data/{table_name}", status_code=200, description="Get table resource from sqlite")
+async def get_table_data_sqlite(
+    table_name: Annotated[str, Path(title="Table name", description="Name of table you want to perform operation on",
+                                    example="title_basics")]
+):
+    # connect to the database
+    try:
+        # execute query
+        db.connect()
+        db.execute(f"SELECT * FROM {table_name};")
+        data = db.get_query_results()
+        db.commit()
+
+    # cannot connect to db
+    except sqlite3.Error:
+        print("[ERROR] Can not connect to the database")
+        raise http_custom_error.cannot_connect_to_db
+    return {"data": data}
+
+
+@sqli_router.get("/data/{table_name}/{record_id}", status_code=200, description="Get record resource from sqlite")
+async def get_record_data_sqlite(
+    table_name: Annotated[str, Path(title="Table name", description="Name of table you want to perform operation on",
+                                    example="title_basics")],
+    record_id: Annotated[str, Path(title="Record identifier", description="Identifies specific record in table",
+                                   example="tt0000004")]
+):
+    # connect to the database
+    try:
+        # execute query
+        db.connect()
+        indicator = "nconst" if table_name == "name_basics" else "tconst"
+        db.execute(f"SELECT * FROM {table_name} WHERE {indicator} = '{record_id}';")
+        data = db.get_query_results()
+        db.commit()
+        if not data:
+            raise http_custom_error.no_such_record
+
+    # cannot connect to db
+    except sqlite3.Error:
+        print("[ERROR] Can not connect to the database")
+        raise http_custom_error.cannot_connect_to_db
+
+    return {"data": data[0]}

@@ -1,12 +1,12 @@
 # libraries imports
-from fastapi import APIRouter, Header, HTTPException, Query, Body
+from fastapi import APIRouter, Header, HTTPException, Query, Body, Path
 from typing import Annotated, List
 from pymongo import MongoClient
 from datetime import datetime
 from pymongo.errors import ServerSelectionTimeoutError
 
 # packages imports
-from models import user, openapi, querry_db
+from models import user, openapi, querry_db, http_custom_error
 from config import *
 
 
@@ -59,7 +59,7 @@ async def validate_user(
         return user.UserExistsRes(exist=True, password_hashed=db_response["password_hashed"])
 
 
-@mdb_router.get("/user", description="Returns all the information stored about users or specified user",
+@mdb_router.get("/users", description="Returns all the information stored about users or specified user",
                 response_description="Returns information retrieved from the database", status_code=200,
                 responses={
                   404: openapi.no_username_found,
@@ -110,7 +110,7 @@ async def get_user_info(
                 is_admin=db_response["is_admin"], creation_date=db_response["creation_date"])
 
 
-@mdb_router.post("/user", status_code=201, description="Create new user",
+@mdb_router.post("/users", status_code=201, description="Create new user",
                  responses={
                     201: openapi.new_user_created,
                     500: openapi.cannot_connect_to_db
@@ -133,7 +133,7 @@ async def insert_user(
     return {"message": "New user created in MongoDB"}
 
 
-@mdb_router.delete("/user", status_code=200, description="Delete user from the database by the username",
+@mdb_router.delete("/users", status_code=200, description="Delete user from the database by the username",
                    responses={
                         200: openapi.user_deleted,
                         404: openapi.no_username_found,
@@ -267,3 +267,67 @@ async def delete_data_mongo(
             detail="Can not connect to the database"
         )
     return {"message": "Record deleted"}
+
+
+@mdb_router.get("/data", status_code=200, description="Get all resources from mongo")
+async def get_all_data_mongo(
+):
+    data = {}
+    # connect to the database
+    try:
+        for table_name in tables_names:
+            data[table_name] = list(db[table_name].find({}, {'_id': 0}))
+
+    # cannot connect to db
+    except ServerSelectionTimeoutError:
+        print("[ERROR] Can not connect to the database")
+        raise http_custom_error.cannot_connect_to_db
+
+    return {"data": {
+        "title_basics": data["title_basics"],
+        "title_episodes": data["title_episodes"],
+        "name_basics": data["name_basics"]
+    }}
+
+
+@mdb_router.get("/data/{table_name}", status_code=200, description="Get table resource from mongo")
+async def get_table_data_mongo(
+    table_name: Annotated[str, Path(title="Table name", description="Name of table you want to perform operation on",
+                                    example="title_basics")]
+):
+    # connect to the database
+    try:
+        # execute query
+        data = list(db[table_name].find({}, {'_id': 0}))
+
+    # cannot connect to db
+    except ServerSelectionTimeoutError:
+        print("[ERROR] Can not connect to the database")
+        raise http_custom_error.cannot_connect_to_db
+
+    return {"data": data}
+
+
+@mdb_router.get("/data/{table_name}/{record_id}", status_code=200, description="Get record resource from mongo")
+async def get_record_data_mongo(
+    table_name: Annotated[str, Path(title="Table name", description="Name of table you want to perform operation on",
+                                    example="title_basics")],
+    record_id: Annotated[str, Path(title="Record identifier", description="Identifies specific record in table",
+                                   example="tt0000004")]
+):
+    # connect to the database
+    try:
+        # execute query
+        indicator = "nconst" if table_name == "name_basics" else "tconst"
+        # execute query
+        data = db[table_name].find_one({indicator: record_id}, {'_id': 0})
+        if not data:
+            raise http_custom_error.no_such_record
+
+    # cannot connect to db
+    except ServerSelectionTimeoutError:
+        print("[ERROR] Can not connect to the database")
+        raise http_custom_error.cannot_connect_to_db
+
+    return {"data": data}
+

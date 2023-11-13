@@ -1,11 +1,13 @@
 # libraries imports
 from datetime import datetime
 import redis
-from fastapi import APIRouter, Header, HTTPException, Query, Body
+from fastapi import APIRouter, Header, HTTPException, Query, Body, Path
 from typing import Annotated, List
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from redis.commands.search.query import Query as redisQuery
+from redis.commands.search.aggregation import AggregateRequest
 import random
+import re
 
 # packages imports
 from models import user, openapi, querry_db, http_custom_error
@@ -45,6 +47,36 @@ def create_indexes(index_name: str):
         return r.ft("idx:" + index_name)
 
 
+# change list to the valid dict
+def redis_list_to_dict(data_list, table: str | None = None):
+
+    if table is not None:
+        data = []
+        for record in data_list:
+            record_to_add = {}
+            for i in range(0, len(record), 2):
+                if re.match(r'^-?\d+$', str(record[i + 1])):
+                    record_to_add[record[i]] = int(record[i + 1])
+                else:
+                    record_to_add[record[i]] = record[i + 1]
+            data.append(record_to_add)
+    else:
+        data = {}
+        # change list od list result into list of dict
+        for table_name in tables_names:
+            data[table_name] = []
+            for record in data_list[table_name]:
+                record_to_add = {}
+                for i in range(0, len(record), 2):
+                    if re.match(r'^-?\d+$', str(record[i + 1])):
+                        record_to_add[record[i]] = int(record[i + 1])
+                    else:
+                        record_to_add[record[i]] = record[i + 1]
+                data[table_name].append(record_to_add)
+
+    return data
+
+
 # create indexes
 indexes["users"] = create_indexes("users")
 indexes["title_basics"] = create_indexes("title_basics")
@@ -81,7 +113,7 @@ async def validate_user(
         return user.UserExistsRes(exist=True, password_hashed=db_response.docs[0]["password_hashed"])
 
 
-@redis_router.get("/user", description="Returns all the information stored about users or specified user",
+@redis_router.get("/users", description="Returns all the information stored about users or specified user",
                   response_description="Returns information retrieved from the database", status_code=200,
                   responses={
                       404: openapi.no_username_found,
@@ -135,7 +167,7 @@ async def get_user_info(
                 is_admin=db_response["is_admin"], creation_date=db_response["creation_date"])
 
 
-@redis_router.post("/user", status_code=201, description="Create new user",
+@redis_router.post("/users", status_code=201, description="Create new user",
                    responses={
                        201: openapi.new_user_created,
                        500: openapi.cannot_connect_to_db
@@ -159,7 +191,7 @@ async def insert_user(
     return {"message": "New user created in Redis"}
 
 
-@redis_router.delete("/user", status_code=200, description="Delete user from the database by the username",
+@redis_router.delete("/users", status_code=200, description="Delete user from the database by the username",
                      responses={
                         200: openapi.user_deleted,
                         404: openapi.no_username_found,
@@ -323,3 +355,83 @@ async def delete_data_redis(
             detail="Can not connect to the database"
         )
     return {"message": "Record deleted"}
+
+
+@redis_router.get("/data", status_code=200, description="Get all resources from redis")
+async def get_all_data_redis(
+):
+    # connect to the database
+    try:
+        data_list = {}
+        """
+        for table_name in tables_names:
+            #query = redisQuery("*")
+            #query._num = indexes[table_name].search("*").total
+            #data[table_name] = indexes[table_name].search(query).docs
+        """
+        for table_name in tables_names:
+            data_list[table_name] = (indexes[table_name].aggregate(AggregateRequest("*").load().group_by(
+                querry_db.redis_models_fields_tuple[table_name])).rows)
+
+        data = redis_list_to_dict(data_list)
+
+    except redis.exceptions.ConnectionError:
+        print("[ERROR] Can not connect to the database")
+        raise http_custom_error.cannot_connect_to_db
+
+    return {"data": {
+        "title_basics": data["title_basics"],
+        "title_episodes": data["title_episodes"],
+        "name_basics": data["name_basics"]
+    }}
+
+
+@redis_router.get("/data/{table_name}", status_code=200, description="Get table resource from redis")
+async def get_table_data_redis(
+    table_name: Annotated[str, Path(title="Table name", description="Name of table you want to perform operation on",
+                                    example="title_basics")]
+):
+    # connect to the database
+    try:
+
+        data_list = (indexes[table_name].aggregate(AggregateRequest("*").load().group_by(
+                    querry_db.redis_models_fields_tuple[table_name])).rows)
+
+        data = redis_list_to_dict(data_list, table_name)
+
+    except redis.exceptions.ConnectionError:
+        print("[ERROR] Can not connect to the database")
+        raise http_custom_error.cannot_connect_to_db
+
+    return {"data": data}
+
+
+@redis_router.get("/data/{table_name}/{record_id}", status_code=200, description="Get record resource from redis")
+async def get_record_data_redis(
+    table_name: Annotated[str, Path(title="Table name", description="Name of table you want to perform operation on",
+                                    example="title_basics")],
+    record_id: Annotated[str, Path(title="Record identifier", description="Identifies specific record in table",
+                                   example="tt0000004")]
+):
+    # connect to the database
+    try:
+
+        data_list = (indexes[table_name].aggregate(AggregateRequest(f"@tconst:{record_id}").load().group_by(
+            querry_db.redis_models_fields_tuple[table_name])).rows)
+
+        if not data_list:
+            raise http_custom_error.no_such_record
+
+        data = {}
+        record = data_list[0]
+        for i in range(0, len(record), 2):
+            if re.match(r'^-?\d+$', str(record[i + 1])):
+                data[record[i]] = int(record[i + 1])
+            else:
+                data[record[i]] = record[i + 1]
+
+    except redis.exceptions.ConnectionError:
+        print("[ERROR] Can not connect to the database")
+        raise http_custom_error.cannot_connect_to_db
+
+    return {"data": data}

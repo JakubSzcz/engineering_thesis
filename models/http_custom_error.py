@@ -19,3 +19,8 @@ lack_of_data = HTTPException(
             status_code=461,
             detail="None of the data to be inserted has been provided"
         )
+
+no_such_record = HTTPException(
+                status_code=404,
+                detail="There is no such record in the database"
+            )
