@@ -234,8 +234,8 @@ async def get_table_data(
                  description="Get specified record data from the table", response_description="Database record response")
 async def get_record_data(
     db_type: Annotated[str, Header(title="Database type", description="Select database you want to retrieve users "
-                                                                      "info from: ['REDIS', 'MDB','PSQL', 'SQLi']",
-                                   examples=["REDIS", "MDB", "PSQL", "SQLi"])],
+                                                                      "info from: ['redis', 'mdb', 'psql', 'sqlite']",
+                                   examples=['redis', 'mdb', 'psql', 'sqlite'])],
     table_name: Annotated[str, Path(title="Table name", description="Name of table you want to perform operation on",
                                     example="title_basics")],
     record_id: Annotated[str, Path(title="Record identifier", description="Identifies specific record in table",
@@ -247,7 +247,7 @@ async def get_record_data(
         # send request to the proc_api
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                url=fun.compose_url(PROC_IP, PROC_PORT) + f"/proc/data",
+                url=fun.compose_url(PROC_IP, PROC_PORT) + "/proc/data",
                 headers=httpx.Headers({
                     "db-type": db_type
                 }),
@@ -282,3 +282,56 @@ async def get_record_data(
             detail="Cannot connect to the proc_api"
         )
 
+
+@data_router.patch("/{table_name}/{record_id}", status_code=200,
+                 description="Update specified record data in the table", response_description="Update confirmation")
+async def update_record_data(
+    db_type: Annotated[str, Header(title="Database type", description="Select database you want to retrieve users "
+                                                                      "info from: ['redis', 'mdb', 'psql', 'sqlite']",
+                                   examples=['redis', 'mdb', 'psql', 'sqlite'])],
+    table_name: Annotated[str, Path(title="Table name", description="Name of table you want to perform operation on",
+                                    example="title_basics")],
+    record_id: Annotated[str, Path(title="Record identifier", description="Identifies specific record in table",
+                                   example="tt0000004")],
+    data: Annotated[dict,
+                    Body(title="Data to be updated", description="Body of the data to be updated in the database")]
+) -> querry_db.PatchRecordResponses:
+
+    try:
+        # send request to the proc_api
+        async with httpx.AsyncClient() as client:
+            response = await client.patch(
+                url=fun.compose_url(PROC_IP, PROC_PORT) + "/proc/data",
+                headers=httpx.Headers({
+                    "db-type": db_type
+                }),
+                params=httpx.QueryParams({
+                    "table_name": table_name,
+                    "record_id": record_id
+                }),
+                json={"data": data, "table_name": table_name}
+            )
+
+        # handle responses
+        if response.status_code == 200:
+            return querry_db.PatchRecordResponses(
+                db_type=db_type,
+                table_name=table_name,
+                old_data=response.json()["old_data"],
+                new_data=response.json()["new_data"]
+            )
+        else:
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=response.json()["detail"]
+            )
+
+    # handel Validation error
+    except exceptions.ResponseValidationError:
+        return response.json()
+
+    except httpx.ConnectError:
+        raise HTTPException(
+            status_code=500,
+            detail="Cannot connect to the proc_api"
+        )
