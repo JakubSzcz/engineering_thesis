@@ -60,3 +60,12 @@ non_data_provided = {
     },
     "description": "Any required body field with data has been provided."
 }
+
+no_such_record = {
+    "content": {
+        "application/json": {
+            "example": {"detail": "No such record in database"}
+        }
+    },
+    "description": "No record with such id has been found."
+}

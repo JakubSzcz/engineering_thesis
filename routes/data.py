@@ -1,13 +1,14 @@
 # libraries import
-from fastapi import APIRouter, Header, HTTPException, Body, exceptions, Path
+from fastapi import APIRouter, Header, HTTPException, Body, exceptions, Path, Depends
 from typing import Annotated
-import httpx
 from datetime import datetime
+import httpx
 
 # packages import
 from config import *
-from models import user, querry_db, openapi
+from models import querry_db, openapi, http_custom_error
 from utilities import functions as fun
+from routes.auth import is_user_authenticated
 
 # ### variables ###
 data_router = APIRouter(
@@ -21,6 +22,7 @@ data_router = APIRouter(
 # ### endpoints ###
 @data_router.post("", description="Inserting data to the desired database engine", status_code=201,
                   response_description="Basic information about the insertion such as database type or insertion time",
+                  dependencies=[Depends(is_user_authenticated)],
                   responses={
                     400: openapi.wrong_db_type_header,
                     422: openapi.non_data_provided,
@@ -82,19 +84,19 @@ async def insert_data_to_db(
                 status_code=response.status_code,
                 detail=response.json()["detail"]
             )
-    # handel Validation error
-    except exceptions.ResponseValidationError:
-        return response.json()
 
     except httpx.ConnectError:
-        raise HTTPException(
-            status_code=500,
-            detail="Cannot connect to the proc_api"
-        )
+        raise http_custom_error.cannot_connect_to_proc
 
 
 @data_router.delete("/{table_name}/{record_id}", status_code=200, description="Deleting data from database",
-                    response_description="Deletion confirmation")
+                    response_description="Deletion confirmation", dependencies=[Depends(is_user_authenticated)],
+                    responses={
+                        400: openapi.wrong_db_type_header,
+                        404: openapi.no_such_record,
+                        422: openapi.non_data_provided,
+                        500: openapi.cannot_connect_to_proc_api
+                    })
 async def delete_data(
     table_name: Annotated[str, Path(title="Table name", description="Name of table you want to perform operation on",
                                     example="title_basics")],
@@ -103,16 +105,19 @@ async def delete_data(
     db_type: Annotated[str, Header(title="Database type", description="Select database you want to retrieve users "
                                                                       "info from: ['redis', 'mdb', 'psql', 'sqlite']",
                                    examples=['redis', 'mdb', 'psql', 'sqlite'])],
-):
+) -> querry_db.DeleteResponses:
 
     try:
         # send request to the proc_api
         async with httpx.AsyncClient() as client:
             response = await client.delete(
-                url=fun.compose_url(PROC_IP, PROC_PORT) + "/proc/data?table_name=" + str(table_name)
-                + "&record_id=" + str(record_id),
+                url=fun.compose_url(PROC_IP, PROC_PORT) + "/proc/data",
                 headers=httpx.Headers({
                     "db-type": db_type
+                }),
+                params=httpx.QueryParams({
+                    "table_name": str(table_name),
+                    "record_id": str(record_id)
                 })
             )
 
@@ -124,19 +129,17 @@ async def delete_data(
                 status_code=response.status_code,
                 detail=response.json()["detail"]
             )
-    # handel Validation error
-    except exceptions.ResponseValidationError:
-        return response.json()
 
     except httpx.ConnectError:
-        raise HTTPException(
-            status_code=500,
-            detail="Cannot connect to the proc_api"
-        )
+        raise http_custom_error.cannot_connect_to_proc
 
 
 @data_router.get("", status_code=200, description="Get all data from all tables contained in one database",
-                    response_description="Database record response")
+                 response_description="Database record response", dependencies=[Depends(is_user_authenticated)],
+                 responses={
+                     400: openapi.wrong_db_type_header,
+                     500: openapi.cannot_connect_to_proc_api
+                 })
 async def get_all_data(
     db_type: Annotated[str, Header(title="Database type", description="Select database you want to retrieve users "
                                                                       "info from: ['redis', 'mdb', 'psql', 'sqlite']",
@@ -170,19 +173,17 @@ async def get_all_data(
                 detail=response.json()["detail"]
             )
 
-    # handel Validation error
-    except exceptions.ResponseValidationError:
-        return response.json()
-
     except httpx.ConnectError:
-        raise HTTPException(
-            status_code=500,
-            detail="Cannot connect to the proc_api"
-        )
+        raise http_custom_error.cannot_connect_to_proc
 
 
 @data_router.get("/{table_name}", status_code=200, description="Get data from specified table from the database",
-                    response_description="Database record response")
+                 response_description="Database record response", dependencies=[Depends(is_user_authenticated)],
+                 responses={
+                        400: openapi.wrong_db_type_header,
+                        404: openapi.no_such_record,
+                        500: openapi.cannot_connect_to_proc_api
+                    })
 async def get_table_data(
     db_type: Annotated[str, Header(title="Database type", description="Select database you want to retrieve users "
                                                                       "info from: ['redis', 'mdb', 'psql', 'sqlite']",
@@ -196,7 +197,7 @@ async def get_table_data(
         # send request to the proc_api
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                url=fun.compose_url(PROC_IP, PROC_PORT) + f"/proc/data",
+                url=fun.compose_url(PROC_IP, PROC_PORT) + "/proc/data",
                 headers=httpx.Headers({
                     "db-type": db_type
                 }),
@@ -219,19 +220,18 @@ async def get_table_data(
                 detail=response.json()["detail"]
             )
 
-    # handel Validation error
-    except exceptions.ResponseValidationError:
-        return response.json()
-
     except httpx.ConnectError:
-        raise HTTPException(
-            status_code=500,
-            detail="Cannot connect to the proc_api"
-        )
+        raise http_custom_error.cannot_connect_to_proc
 
 
 @data_router.get("/{table_name}/{record_id}", status_code=200,
-                 description="Get specified record data from the table", response_description="Database record response")
+                 description="Get specified record data from the table",
+                 response_description="Database record response", dependencies=[Depends(is_user_authenticated)],
+                 responses={
+                        400: openapi.wrong_db_type_header,
+                        404: openapi.no_such_record,
+                        500: openapi.cannot_connect_to_proc_api
+                 })
 async def get_record_data(
     db_type: Annotated[str, Header(title="Database type", description="Select database you want to retrieve users "
                                                                       "info from: ['redis', 'mdb', 'psql', 'sqlite']",
@@ -272,19 +272,19 @@ async def get_record_data(
                 detail=response.json()["detail"]
             )
 
-    # handel Validation error
-    except exceptions.ResponseValidationError:
-        return response.json()
-
     except httpx.ConnectError:
-        raise HTTPException(
-            status_code=500,
-            detail="Cannot connect to the proc_api"
-        )
+        raise http_custom_error.cannot_connect_to_proc
 
 
 @data_router.patch("/{table_name}/{record_id}", status_code=200,
-                 description="Update specified record data in the table", response_description="Update confirmation")
+                   description="Update specified record data in the table", response_description="Update confirmation",
+                   dependencies=[Depends(is_user_authenticated)],
+                   responses={
+                       400: openapi.wrong_db_type_header,
+                       404: openapi.no_such_record,
+                       422: openapi.non_data_provided,
+                       500: openapi.cannot_connect_to_proc_api
+                   })
 async def update_record_data(
     db_type: Annotated[str, Header(title="Database type", description="Select database you want to retrieve users "
                                                                       "info from: ['redis', 'mdb', 'psql', 'sqlite']",
@@ -326,12 +326,5 @@ async def update_record_data(
                 detail=response.json()["detail"]
             )
 
-    # handel Validation error
-    except exceptions.ResponseValidationError:
-        return response.json()
-
     except httpx.ConnectError:
-        raise HTTPException(
-            status_code=500,
-            detail="Cannot connect to the proc_api"
-        )
+        raise http_custom_error.cannot_connect_to_proc
