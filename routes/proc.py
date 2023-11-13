@@ -7,7 +7,7 @@ import re
 
 # packages imports
 from utilities import functions as fun
-from models import querry_db, user
+from models import querry_db
 from config import *
 
 
@@ -16,9 +16,6 @@ proc_router = APIRouter(
     prefix="/proc",
     tags=["Process"],
 )
-
-
-# ### functions ###
 
 
 # ### endpoints ###
@@ -49,7 +46,7 @@ async def restart_db(
 
     if len(db_to_send) == 0:
         raise HTTPException(
-            status_code=500,
+            status_code=400,
             detail="No database header provided"
         )
 
@@ -73,7 +70,7 @@ async def restart_db(
 
 @proc_router.post("/data", description="Insert data to the provided database", status_code=201)
 async def insert(
-    db_type: Annotated[str, Header(title="Database type", description="Database type destination", example="psql")],
+    db_type: Annotated[str, Depends(fun.validate_db_type)],
     correlation_id: Annotated[str, Header(title="Request correlation identifier",
                                           description="Identifies every unique data insertion request",
                                           example="psql")],
@@ -81,8 +78,6 @@ async def insert(
     name_basics: Annotated[querry_db.InsertNameBasic | None, Body()] = None,
     title_episode: Annotated[querry_db.InsertTitleEpisode | None, Body()] = None,
 ):
-    # validate db_type
-    fun.validate_db_type(db_type)
 
     # ensure body is correct
     if title_basics is None and name_basics is None and title_episode is None:
@@ -121,21 +116,12 @@ async def insert(
 
 @proc_router.delete("/data")
 async def delete_data(
-        db_type: Annotated[str, Header(title="Database type", description="Database type destination", example="psql")],
-        table_name: Annotated[str, Query(title="Table name", examples=["title_basics"])],
-        record_id: Annotated[str, Query(title="Username", examples=["tt0000004"])]
+        db_type: Annotated[str, Depends(fun.validate_db_type)],
+        table_name: Annotated[str, Depends(fun.validate_table_name)],
+        record_id: Annotated[str, Depends(fun.validate_record_id)]
 ):
-    # validate db_type
-    fun.validate_db_type(db_type)
     # validate table name
     fun.validate_table_name(table_name)
-
-    # pre validate record_id
-    if not re.match(r"^[tnm][tnm]\d+$", str(record_id)):
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid record_id format. Record id should looks like {t/n/m}{t/n/m}XXXXX, X- digit"
-        )
 
     # route request to the appropriate sys endpoint
     try:
@@ -163,28 +149,21 @@ async def delete_data(
 
 @proc_router.get("/data")
 async def get_data(
-        db_type: Annotated[str, Header(title="Database type", description="Database type destination", example="psql")],
+        db_type: Annotated[str, Depends(fun.validate_db_type)],
         filters: Annotated[bool, Query(title="Filters indicator flag", examples=["True"])],
         table_name: Annotated[str | None, Query(title="Table name", examples=["title_basics"])] = None,
         record_id: Annotated[str | None, Query(title="Record identifier", examples=["tt0000004"])] = None
 ):
-    # validate db_type
-    fun.validate_db_type(db_type)
     # route request to the appropriate sys endpoint
     try:
         # retrieved filters
         if filters:
-            # validate table name
-            fun.validate_table_name(table_name)
+            # validate table_name
+            fun.validate_table_name_optional(table_name)
             # record_id handling
             if record_id is not None:
-                # pre validate record_id
-                if not re.match(r"^[tnm][tnm]\d+$", str(record_id)):
-                    raise HTTPException(
-                        status_code=400,
-                        detail="Invalid record_id format. Record id should looks like {t/n/m}{t/n/m}XXXXX, X- digit"
-                    )
-
+                # prevalidate record_id
+                fun.validate_record_id_optional(record_id)
                 # send request to the sys_api about record_id related resource
                 async with httpx.AsyncClient() as client:
                     response = await client.get(
@@ -230,17 +209,11 @@ async def get_data(
 @proc_router.patch("/data", status_code=200,
                  description="Update specified record data in the table", response_description="Update confirmation")
 async def update_data(
-    db_type: Annotated[str, Header(title="Database type", description="Database type destination", example="psql")],
-    table_name: Annotated[str, Query(title="Table name", examples=["title_basics"])],
-    record_id: Annotated[str, Query(title="Record identifier", examples=["tt0000004"])],
+    db_type: Annotated[str, Depends(fun.validate_db_type)],
+    table_name: Annotated[str, Depends(fun.validate_table_name)],
+    record_id: Annotated[str, Depends(fun.validate_record_id)],
     data: Annotated[dict, Depends(fun.validate_db_structure)]
 ) -> querry_db.PatchRecordResponses:
-
-    # validate db_type
-    fun.validate_db_type(db_type)
-
-    # validate table name
-    fun.validate_table_name(table_name)
 
     # check if record exist in database
     async with httpx.AsyncClient() as client:
@@ -271,4 +244,3 @@ async def update_data(
             status_code=old_data_response.status_code,
             detail=old_data_response.json()["detail"]
         )
-

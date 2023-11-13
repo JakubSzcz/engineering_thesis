@@ -1,13 +1,16 @@
-# imports
+# library imports
 from passlib.context import CryptContext
-import httpx
 from config import *
-from fastapi import HTTPException, Body
+from fastapi import HTTPException, Body, Header, Query
 from typing import Annotated
 from pydantic import ValidationError
+import httpx
+import re
 
 
+# packages imports
 from models import querry_db
+
 
 # compose valid url
 def compose_url(ip: str, port: str,):
@@ -37,16 +40,28 @@ async def send_async_request_restart_db(db_name):
 
 
 # validate database type provided
-def validate_db_type(db_type: str):
+def validate_db_type(db_type: Annotated[str, Header(title="Database type", description="Database type destination",
+                                                    example="psql")]):
     if db_type not in db_types:
         raise HTTPException(
             status_code=400,
             detail="Wrong db_type, possible database types: ['redis', 'mdb', 'psql', 'sqlite']"
         )
+    return db_type
 
 
 # validate table name
-def validate_table_name(table_name: str):
+def validate_table_name(table_name: Annotated[str, Query(title="Table name", examples=["title_basics"])]):
+    if table_name not in tables_names:
+        raise HTTPException(
+            status_code=422,
+            detail="Invalid table name. Possible names: [title_basics, title_episodes, name_basics]"
+        )
+    return table_name
+
+
+# validate table name
+def validate_table_name_optional(table_name: str):
     if table_name not in tables_names:
         raise HTTPException(
             status_code=422,
@@ -56,7 +71,7 @@ def validate_table_name(table_name: str):
 
 # validate structure of the data provided
 async def validate_db_structure(data: Annotated[dict, Body(title="Data to be updated",
-                                                           description="Body of the data to be updated in the database")]):
+                                                        description="Body of the data to be updated in the database")]):
     valid_field = False
 
     if data["table_name"] == "title_basics":
@@ -121,3 +136,24 @@ async def validate_db_structure(data: Annotated[dict, Body(title="Data to be upd
                 detail="No valid field was provided"
             )
     return data
+
+
+# validate record_id
+def validate_record_id(record_id: Annotated[str, Query(title="Record identifier", examples=["tt0000004"])]):
+    # pre validate record_id
+    if not re.match(r"^[tnm][tnm]\d+$", str(record_id)):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid record_id format. Record id should looks like {t/n/m}{t/n/m}XXXXX, X- digit"
+        )
+    return record_id
+
+
+# validate record_id
+def validate_record_id_optional(record_id: str):
+    # pre validate record_id
+    if not re.match(r"^[tnm][tnm]\d+$", str(record_id)):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid record_id format. Record id should looks like {t/n/m}{t/n/m}XXXXX, X- digit"
+        )

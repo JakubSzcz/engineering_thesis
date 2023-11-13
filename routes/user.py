@@ -1,17 +1,16 @@
 # libraries imports
-import random
-from fastapi import APIRouter, Header, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from utilities import functions as fun
 from typing import Annotated
 import httpx
 import secrets
 import string
+import random
 
 
 # packages imports
 from config import *
-from models.user import *
-from models import openapi
+from models import user, openapi
 
 
 # ### variables ###
@@ -38,15 +37,10 @@ def generate_random_string():
                      500: openapi.cannot_connect_to_sys_api
                  })
 async def get_user(
-    db_type: Annotated[str, Header(title="Database type",
-                                   description="Select database you want to retrieve users info from",
-                                   examples=['redis', 'mdb', 'psql', 'sqlite'])],
+    db_type: Annotated[str, Depends(fun.validate_db_type)],
     username: Annotated[str | None, Query(title="Username", description="Username by which you can retrieve "
                                                                         "its info from database")] = None
-) -> UserToExpRes:
-
-    # validate db_type
-    fun.validate_db_type(db_type)
+) -> user.UserToExpRes:
 
     # send request to the sys api
     async with httpx.AsyncClient() as client:
@@ -79,9 +73,9 @@ async def get_user(
             )
         else:
             if username is None:
-                return UserToExpRes(users=[GetUserInfoRes(**item) for item in response.json()])
+                return user.UserToExpRes(users=[user.GetUserInfoRes(**item) for item in response.json()])
             else:
-                return UserToExpRes(users=GetUserInfoRes(**response.json()))
+                return user.UserToExpRes(users=user.GetUserInfoRes(**response.json()))
 
 
 @user_router.post("", status_code=201, description="Creates a new user in the database",
@@ -90,14 +84,8 @@ async def get_user(
                       500: openapi.cannot_connect_to_sys_api
                   })
 async def create_user(
-    db_type: Annotated[str, Header(title="Database type",
-                                   description="Indicates database in which users will be created: ['redis', 'mdb', "
-                                               "'psql', 'sqlite']",
-                                   examples=['redis', 'mdb', 'psql', 'sqlite'])]
-) -> CreateUserRes:
-
-    # validate db_type
-    fun.validate_db_type(db_type)
+    db_type: Annotated[str, Depends(fun.validate_db_type)]
+) -> user.CreateUserRes:
 
     # generate credentials accordingly to the database type
     username = generate_random_string()
@@ -132,7 +120,7 @@ async def create_user(
             )
     # return response
     if response.status_code == 201:
-        return CreateUserRes(username=username, password=password)
+        return user.CreateUserRes(username=username, password=password)
     else:
         raise HTTPException(
             status_code=response.status_code,
@@ -148,15 +136,10 @@ async def create_user(
                         500: openapi.cannot_connect_to_sys_api
                     })
 async def delete_user(
-        db_type: Annotated[str, Header(title="Database type", description="Select database you want to delete user "
-                                                                          "from: ['redis', 'mdb', 'psql', 'sqlite']",
-                                       examples=['redis', 'mdb', 'psql', 'sqlite'])],
+        db_type: Annotated[str, Depends(fun.validate_db_type)],
         username: Annotated[str, Query(title="Username", description="Username by which user will be deleted "
                                                                      "from the database")]
 ):
-
-    # validate db_type
-    fun.validate_db_type(db_type)
 
     async with httpx.AsyncClient() as client:
         try:

@@ -1,18 +1,15 @@
 # libraries imports
 from fastapi import APIRouter, Header, HTTPException
-from utilities import functions
+from utilities import functions as fun
 from typing import Annotated, Any
-from datetime import timedelta
+from datetime import timedelta, datetime
 import httpx
 from jose import jwt
 
 
 # packages imports
 from config import *
-from models.user import DatabaseType
-from models.auth import *
-from models import openapi
-
+from models import auth, openapi
 
 # ### variables ###
 auth_router = APIRouter(
@@ -20,7 +17,8 @@ auth_router = APIRouter(
     tags=["Authorization"],
 )
 
-hash_context = functions.HashContext()
+# hash context
+hash_context = fun.HashContext()
 
 
 # ### functions ###
@@ -60,7 +58,8 @@ async def user_exists(
                                                    title="Client password",
                                                    description="Plain password provided by the client")],
         timestamp: Annotated[datetime, Header(title="Timestamp", description="Timestamp of token request creation")]
-) -> UserAuthRes:
+) -> auth.UserAuthRes:
+
     # verify database destination by the last user_name char
     try:
         last_char = int(user_username[len(user_username)-1])
@@ -71,19 +70,19 @@ async def user_exists(
         )
     # declare database type used
     if 0 <= last_char < 3:
-        db_type = DatabaseType.PSQL
+        db_type = "psql"
     elif 3 <= last_char < 6:
-        db_type = DatabaseType.MDB
+        db_type = "mdb"
     elif 6 <= last_char < 8:
-        db_type = DatabaseType.REDIS
+        db_type = "redis"
     else:
-        db_type = DatabaseType.SQLi
+        db_type = "sqlite"
 
     # send request to the sys api to verify if user exists
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(
-                url=functions.compose_url(SYS_IP, SYS_PORT) + "/" + db_type.value + "/user/validate",
+                url=fun.compose_url(SYS_IP, SYS_PORT) + f"/{db_type}/user/validate",
                 headers=httpx.Headers({
                     "user-username": user_username
                 })
@@ -98,9 +97,9 @@ async def user_exists(
         if bool(response.json()["exist"]):
             if hash_context.verify(user_password_plain, response.json()["password_hashed"]):
                 token, expiry_time = creat_access_token(user_username, requested_time=timestamp)
-                return UserAuthRes(token=Token(access_token=token, token_type="Bearer", expiatory_time=expiry_time),
-                                   exist=True, correct_pwd=True)
+                return auth.UserAuthRes(token=auth.Token(access_token=token, token_type="Bearer",
+                                                         expiatory_time=expiry_time), exist=True, correct_pwd=True)
             else:
-                return UserAuthRes(exist=True, correct_pwd=False)
+                return auth.UserAuthRes(exist=True, correct_pwd=False)
         else:
-            return UserAuthRes(exist=False)
+            return auth.UserAuthRes(exist=False)
