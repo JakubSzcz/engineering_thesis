@@ -331,3 +331,27 @@ async def get_record_data_mongo(
 
     return {"data": data}
 
+
+@mdb_router.patch("/data/{table_name}/{record_id}", status_code=204, description="Update record in mongo")
+async def update_record_mongo(
+        table_name: Annotated[
+            str, Path(title="Table name", description="Name of table you want to perform operation on",
+                      example="title_basics")],
+        record_id: Annotated[str, Path(title="Record identifier", description="Identifies specific record in table",
+                                       example="tt0000004")],
+        data: Annotated[dict, Body()]
+):
+
+    # prepare data to insert
+    fields_to_update = {"$set": data}
+
+    # connect to the database
+    try:
+        # execute query
+        indicator = "nconst" if table_name == "name_basics" else "tconst"
+        db[table_name].update_one({indicator: record_id}, fields_to_update)
+
+    # cannot connect to db
+    except ServerSelectionTimeoutError:
+        print("[ERROR] Can not connect to the database")
+        raise http_custom_error.cannot_connect_to_db

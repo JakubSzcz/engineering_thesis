@@ -435,3 +435,26 @@ async def get_record_data_redis(
         raise http_custom_error.cannot_connect_to_db
 
     return {"data": data}
+
+
+@redis_router.patch("/data/{table_name}/{record_id}", status_code=204, description="Update record in redis")
+async def update_record_redis(
+        table_name: Annotated[
+            str, Path(title="Table name", description="Name of table you want to perform operation on",
+                      example="title_basics")],
+        record_id: Annotated[str, Path(title="Record identifier", description="Identifies specific record in table",
+                                       example="tt0000004")],
+        data: Annotated[dict, Body()]
+):
+
+    # connect to the database
+    try:
+        indicator = "nconst" if table_name == "name_basics" else "tconst"
+        record_name = indexes[table_name].search(redisQuery(f"@{indicator}:{record_id}")).docs[0].id
+        # execute query
+        r.hset(name=record_name, mapping=data)
+
+    except redis.exceptions.ConnectionError:
+        print("[ERROR] Can not connect to the database")
+        raise http_custom_error.cannot_connect_to_db
+

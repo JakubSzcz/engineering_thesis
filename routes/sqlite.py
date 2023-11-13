@@ -349,3 +349,34 @@ async def get_record_data_sqlite(
         raise http_custom_error.cannot_connect_to_db
 
     return {"data": data[0]}
+
+
+@sqli_router.patch("/data/{table_name}/{record_id}", status_code=204, description="Update record in sqlite")
+async def update_record_sqlite(
+        table_name: Annotated[
+            str, Path(title="Table name", description="Name of table you want to perform operation on",
+                      example="title_basics")],
+        record_id: Annotated[str, Path(title="Record identifier", description="Identifies specific record in table",
+                                       example="tt0000004")],
+        data: Annotated[dict, Body()]
+):
+
+    # prepare data to insert
+    fields_to_update = ""
+    for field in data:
+        fields_to_update = fields_to_update + f"{field} = '{data[field]}', "
+    # deletes ',' from last insert
+    fields_to_update = fields_to_update[:-2]
+    # connect to the database
+    try:
+        # execute query
+        db.connect()
+        indicator = "nconst" if table_name == "name_basics" else "tconst"
+        db.execute(f"UPDATE {table_name} SET {fields_to_update} WHERE {indicator} = '{record_id}';")
+        db.commit()
+
+    # cannot connect to db
+    except sqlite3.Error:
+        print("[ERROR] Can not connect to the database")
+        raise http_custom_error.cannot_connect_to_db
+
