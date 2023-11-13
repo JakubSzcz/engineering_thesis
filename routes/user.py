@@ -10,7 +10,7 @@ from utilities import functions as fun
 
 # ### variables ###
 user_router = APIRouter(
-    prefix="/user",
+    prefix="/users",
     tags=["User"],
 )
 
@@ -28,18 +28,17 @@ user_router = APIRouter(
                  })
 async def retrieve_user(
         db_type: Annotated[str, Header(title="Database type", description="Select database you want to retrieve users "
-                                                                          "info from: ['REDIS', 'MDB','PSQL', 'SQLi']",
-                                       examples=["REDIS", "MDB","PSQL", "SQLi"])],
+                                                                        "info from: ['redis', 'mdb', 'psql', 'sqlite']",
+                                       examples=['redis', 'mdb', 'psql', 'sqlite'])],
         username: Annotated[str, Path(title="User id", description="User username unique char sequence",
                                       example="test_test_test_test")]
 ) -> user.UserResponse:
-    # validate database type provided
-    fun.validate_db_type(db_type)
+
     # send request to the proc_api
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(
-                url=fun.compose_url(PROC_IP, PROC_PORT) + "/user?username=" + username,
+                url=fun.compose_url(PROC_IP, PROC_PORT) + "/users?username=" + username,
                 headers=httpx.Headers({
                     "db-type": db_type,
                 })
@@ -67,16 +66,14 @@ async def retrieve_user(
                  })
 async def retrieve_all_users(
         db_type: Annotated[str, Header(title="Database type", description="Select database you want to retrieve users "
-                                                                          "info from", examples=["REDIS", "MDB",
-                                                                                                 "PSQL", "SQLi"])]
+                                                            "info from", examples=['redis', 'mdb', 'psql', 'sqlite'])]
 ) -> user.GetUsersInfoRes:
-    # validate database type provided
-    fun.validate_db_type(db_type)
+
     # send request to the proc_api
     async with httpx.AsyncClient() as client:
         try:
             response = await client.get(
-                url=fun.compose_url(PROC_IP, PROC_PORT) + "/user",
+                url=fun.compose_url(PROC_IP, PROC_PORT) + "/users",
                 headers=httpx.Headers({
                     "db-type": db_type,
                 })
@@ -105,18 +102,16 @@ async def retrieve_all_users(
                     })
 async def delete_user(
         db_type: Annotated[str, Header(title="Database type", description="Select database you want to store user info"
-                                                                          "info from", examples=["REDIS", "MDB",
-                                                                                                 "PSQL", "SQLi"])],
+                                                            "info from", examples=['redis', 'mdb', 'psql', 'sqlite'])],
         username: Annotated[str, Path(title="User id", description="User username unique char sequence",
                                       example="test_test_test_test")]
 ):
-    fun.validate_db_type(db_type)
 
     # send request to the proc_api
     async with httpx.AsyncClient() as client:
         try:
             response = await client.delete(
-                url=fun.compose_url(PROC_IP, PROC_PORT) + "/user?username=" + username,
+                url=fun.compose_url(PROC_IP, PROC_PORT) + "/users?username=" + username,
                 headers=httpx.Headers({
                     "db-type": db_type,
                 })
@@ -144,16 +139,14 @@ async def delete_user(
                   })
 async def create_user(
         db_type: Annotated[str, Header(title="Database type", description="Select database you want to store user info"
-                                                                          "info from", examples=["REDIS", "MDB",
-                                                                                                 "PSQL", "SQLi"])]
+                                                            "info from", examples=['redis', 'mdb', 'psql', 'sqlite'])]
 ) -> user.CreateUserRes:
-    # validate database type provided
-    fun.validate_db_type(db_type)
+
     # send request to the proc_api
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(
-                url=fun.compose_url(PROC_IP, PROC_PORT) + "/user",
+                url=fun.compose_url(PROC_IP, PROC_PORT) + "/users",
                 headers=httpx.Headers({
                     "db-type": db_type,
                 })

@@ -29,16 +29,14 @@ data_router = APIRouter(
                   })
 async def insert_data_to_db(
         db_type: Annotated[str, Header(title="Database type", description="Select database you want to retrieve users "
-                                                                          "info from: ['REDIS', 'MDB','PSQL', 'SQLi']",
-                                       examples=["REDIS", "MDB", "PSQL", "SQLi"])],
+                                                                        "info from: ['redis', 'mdb', 'psql', 'sqlite']",
+                                       examples=['redis', 'mdb', 'psql', 'sqlite'])],
         title_basics: Annotated[querry_db.InsertTitleBasic | None, Body()] = None,
         name_basics: Annotated[querry_db.InsertNameBasic | None, Body()] = None,
         title_episode: Annotated[querry_db.InsertTitleEpisode | None, Body()] = None
 ) -> querry_db.InsertResponses:
 
     start_time = datetime.utcnow()
-    # validate db_type
-    fun.validate_db_type(db_type)
 
     # data to be sent
     data = {}
@@ -69,7 +67,7 @@ async def insert_data_to_db(
             response = await client.post(
                 url=fun.compose_url(PROC_IP, PROC_PORT) + "/proc/data",
                 headers=httpx.Headers({
-                    "db-type": user.DatabaseType[db_type].value,
+                    "db-type": db_type,
                     "correlation-id": correlation_id
                 }),
                 json=data
@@ -103,19 +101,9 @@ async def delete_data(
     record_id: Annotated[str, Path(title="Record identifier", description="Identifies specific record in table",
                                    example="tt0000004")],
     db_type: Annotated[str, Header(title="Database type", description="Select database you want to retrieve users "
-                                                                      "info from: ['REDIS', 'MDB','PSQL', 'SQLi']",
-                                   examples=["REDIS", "MDB", "PSQL", "SQLi"])],
+                                                                      "info from: ['redis', 'mdb', 'psql', 'sqlite']",
+                                   examples=['redis', 'mdb', 'psql', 'sqlite'])],
 ):
-
-    # validate db_type
-    fun.validate_db_type(db_type)
-
-    # validate table name
-    if table_name not in ["title_basics", "title_episodes", "name_basics"]:
-        raise HTTPException(
-            status_code=422,
-            detail="Invalid table name. Possible tables: ['title_basics', 'title_episodes', 'name_basics']"
-        )
 
     try:
         # send request to the proc_api
@@ -124,7 +112,7 @@ async def delete_data(
                 url=fun.compose_url(PROC_IP, PROC_PORT) + "/proc/data?table_name=" + str(table_name)
                 + "&record_id=" + str(record_id),
                 headers=httpx.Headers({
-                    "db-type": user.DatabaseType[db_type].value
+                    "db-type": db_type
                 })
             )
 
@@ -145,3 +133,152 @@ async def delete_data(
             status_code=500,
             detail="Cannot connect to the proc_api"
         )
+
+
+@data_router.get("", status_code=200, description="Get all data from all tables contained in one database",
+                    response_description="Database record response")
+async def get_all_data(
+    db_type: Annotated[str, Header(title="Database type", description="Select database you want to retrieve users "
+                                                                      "info from: ['redis', 'mdb', 'psql', 'sqlite']",
+                                   examples=['redis', 'mdb', 'psql', 'sqlite'])]
+) -> querry_db.GetResponses:
+
+    try:
+        # send request to the proc_api
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                url=fun.compose_url(PROC_IP, PROC_PORT) + "/proc/data",
+                headers=httpx.Headers({
+                    "db-type": db_type
+                }),
+                params=httpx.QueryParams({
+                    "filters": "False"
+                })
+            )
+
+        # handle responses
+        if response.status_code == 200:
+            return querry_db.GetResponses(
+                db_type=db_type,
+                title_basics=response.json()["data"]["title_basics"],
+                title_episodes=response.json()["data"]["title_episodes"],
+                name_basics=response.json()["data"]["name_basics"]
+            )
+        else:
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=response.json()["detail"]
+            )
+
+    # handel Validation error
+    except exceptions.ResponseValidationError:
+        return response.json()
+
+    except httpx.ConnectError:
+        raise HTTPException(
+            status_code=500,
+            detail="Cannot connect to the proc_api"
+        )
+
+
+@data_router.get("/{table_name}", status_code=200, description="Get data from specified table from the database",
+                    response_description="Database record response")
+async def get_table_data(
+    db_type: Annotated[str, Header(title="Database type", description="Select database you want to retrieve users "
+                                                                      "info from: ['redis', 'mdb', 'psql', 'sqlite']",
+                                   examples=['redis', 'mdb', 'psql', 'sqlite'])],
+    table_name: Annotated[str, Path(title="Table name", description="Name of table you want to perform operation on",
+                                    example="title_basics")],
+
+) -> querry_db.GetTableResponses:
+
+    try:
+        # send request to the proc_api
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                url=fun.compose_url(PROC_IP, PROC_PORT) + f"/proc/data",
+                headers=httpx.Headers({
+                    "db-type": db_type
+                }),
+                params=httpx.QueryParams({
+                    "filters": "True",
+                    "table_name": table_name
+                })
+            )
+
+        # handle responses
+        if response.status_code == 200:
+            return querry_db.GetTableResponses(
+                db_type=db_type,
+                table_name=table_name,
+                data=response.json()["data"]
+            )
+        else:
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=response.json()["detail"]
+            )
+
+    # handel Validation error
+    except exceptions.ResponseValidationError:
+        return response.json()
+
+    except httpx.ConnectError:
+        raise HTTPException(
+            status_code=500,
+            detail="Cannot connect to the proc_api"
+        )
+
+
+@data_router.get("/{table_name}/{record_id}", status_code=200,
+                 description="Get specified record data from the table", response_description="Database record response")
+async def get_record_data(
+    db_type: Annotated[str, Header(title="Database type", description="Select database you want to retrieve users "
+                                                                      "info from: ['REDIS', 'MDB','PSQL', 'SQLi']",
+                                   examples=["REDIS", "MDB", "PSQL", "SQLi"])],
+    table_name: Annotated[str, Path(title="Table name", description="Name of table you want to perform operation on",
+                                    example="title_basics")],
+    record_id: Annotated[str, Path(title="Record identifier", description="Identifies specific record in table",
+                                   example="tt0000004")]
+
+) -> querry_db.GetRecordResponses:
+
+    try:
+        # send request to the proc_api
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                url=fun.compose_url(PROC_IP, PROC_PORT) + f"/proc/data",
+                headers=httpx.Headers({
+                    "db-type": db_type
+                }),
+                params=httpx.QueryParams({
+                    "filters": "True",
+                    "table_name": table_name,
+                    "record_id": record_id
+                })
+            )
+
+        # handle responses
+        if response.status_code == 200:
+            return querry_db.GetRecordResponses(
+                db_type=db_type,
+                table_name=table_name,
+                record_id=record_id,
+                data=response.json()["data"]
+            )
+        else:
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=response.json()["detail"]
+            )
+
+    # handel Validation error
+    except exceptions.ResponseValidationError:
+        return response.json()
+
+    except httpx.ConnectError:
+        raise HTTPException(
+            status_code=500,
+            detail="Cannot connect to the proc_api"
+        )
+

@@ -26,7 +26,7 @@ def compose_url(ip: str, port: str,):
 
 # validate database type provided
 def validate_db_type(db_type: str):
-    if db_type not in ["REDIS", "MDB", "PSQL", "SQLi"]:
+    if db_type not in ['redis', 'mdb', 'psql', 'sqlite']:
         raise HTTPException(
             status_code=400,
             detail="Wrong db_type, possible database types: REDIS, MDB, PSQL, SQLi"

@@ -50,3 +50,33 @@ class DeleteResponses(BaseModel):
     db_type: str = Field(title="Database type", examples=["PSQL"])
     table_name: str = Field(title="Table name", examples=["title_basics"])
     record_id: str = Field(title="Record ID", examples=["tt0000001"])
+
+
+class GetResponses(BaseModel):
+    message: str = Field(title="Message information", examples=["Record successfully retrieved"],
+                         default="Records successfully retrieved")
+    db_type: str = Field(title="Database type", examples=["PSQL"])
+    title_basics: list | None = Field(title="Title Basics response", default=None)
+    title_episodes: list | None = Field(title="Title Episodes response", default=None)
+    name_basics: list | None = Field(title="Name Basics response", default=None)
+
+
+class GetTableResponses(BaseModel):
+    message: str = Field(title="Message information", examples=["Records from table {table_name} successfully retrieved"],
+                         default="Records successfully retrieved")
+    db_type: str = Field(title="Database type", examples=["PSQL"])
+    table_name: str = Field(title="Table name", description="Data retrieved from specified table",
+                            examples=["title_basics"])
+    data: list[dict] | None = Field(title="Title Basics response", default=None)
+
+
+class GetRecordResponses(BaseModel):
+    message: str = Field(title="Message information", examples=["The record data from table {table_name} "
+                                                                "successfully retrieved"],
+                         default="Record successfully retrieved")
+    db_type: str = Field(title="Database type", examples=["PSQL"])
+    table_name: str = Field(title="Table name", description="Data retrieved from specified table",
+                            examples=["title_basics"])
+    record_id: str = Field(title="Record identifier", description="Identifies specific record in table",
+                           example="tt0000004")
+    data: dict = Field(title="Data response")

@@ -15,7 +15,7 @@ cache = Cache()
 app = FastAPI(
     title="Experience API (EXP_API)",
     description=exp_description,
-    summary="Experience layer of the microservice.",
+    summary="The Experience microservice.",
     version="1.0",
     openapi_tags=tags_metadata_exp_api
 )
