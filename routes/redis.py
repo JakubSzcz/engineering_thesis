@@ -1,11 +1,11 @@
 # libraries imports
 from datetime import datetime
-import redis
 from fastapi import APIRouter, Header, HTTPException, Query, Body, Path
 from typing import Annotated, List
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from redis.commands.search.query import Query as redisQuery
 from redis.commands.search.aggregation import AggregateRequest
+import redis
 import random
 import re
 
@@ -35,9 +35,8 @@ def create_indexes(index_name: str):
         index.info()
         return index
     # no connection with the database
-    except redis.exceptions.ConnectionError as e:
+    except redis.exceptions.ConnectionError:
         print("[ERROR] Can not connect to the Redis database")
-        # raise e # TODO uncomment on testing
     except redis.exceptions.ResponseError:
         # if no index exists, create new one
         schema = indexes_create_schema[index_name]["schema"]
@@ -274,13 +273,13 @@ async def insert_redis(
             if len(db_response.docs) == 0:
                 # insert data
                 r.hset(name=("title_basics:" + str(int(datetime.utcnow().timestamp()) +
-                                             random.randint(1,9999))), mapping={
+                                                   random.randint(1, 9999))), mapping={
                        "tconst": title_basics.tconst, "titleType": title_basics.titleType,
                        "primaryTitle": title_basics.primaryTitle,
                        "originalTitle": title_basics.originalTitle, "isAdult": int(title_basics.isAdult),
                        "startYear": int(title_basics.startYear), "endYear": int(title_basics.endYear),
                        "runtimeMinutes": int(title_basics.runtimeMinutes), "genres": title_basics.genres
-                    })
+                })
             else:
                 raise http_custom_error.record_duplicated
 
@@ -291,7 +290,7 @@ async def insert_redis(
             if len(db_response.docs) == 0:
                 # insert data
                 r.hset(name=("name_basics:" + str(int(datetime.utcnow().timestamp()) +
-                                                  random.randint(1,9999))), mapping={
+                                                  random.randint(1, 9999))), mapping={
                         "tconst": name_basics.nconst, "primaryName": name_basics.primaryName,
                         "birthYear": int(name_basics.birthYear), "deathYear": int(name_basics.deathYear),
                         "primaryProfession": name_basics.primaryProfession, "knownForTitles": name_basics.knownForTitles
@@ -306,9 +305,10 @@ async def insert_redis(
             if len(db_response.docs) == 0:
                 # insert data
                 r.hset(name=("title_episodes:" + str(int(datetime.utcnow().timestamp()) +
-                                                     random.randint(1,9999))), mapping={
+                                                     random.randint(1, 9999))), mapping={
                         "tconst": title_episode.tconst, "parentTconst": title_episode.parentTconst,
-                        "seasonNumber": int(title_episode.seasonNumber), "episodeNumber": int(title_episode.episodeNumber)
+                        "seasonNumber": int(title_episode.seasonNumber),
+                        "episodeNumber": int(title_episode.episodeNumber)
                 })
             else:
                 raise http_custom_error.record_duplicated
@@ -457,4 +457,3 @@ async def update_record_redis(
     except redis.exceptions.ConnectionError:
         print("[ERROR] Can not connect to the database")
         raise http_custom_error.cannot_connect_to_db
-

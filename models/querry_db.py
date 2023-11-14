@@ -1,5 +1,4 @@
 from pydantic import BaseModel, Field
-from typing import List
 
 
 # model of request body to insert title_basic
@@ -36,7 +35,8 @@ class InsertTitleEpisode(BaseModel):
 
 
 redis_models_fields = {
-    "title_basics": "tconst, titleType, primaryTitle, originalTitle, isAdult, startYear, endYear, runtimeMinutes, genres",
+    "title_basics": "tconst, titleType, primaryTitle, originalTitle, isAdult, startYear, "
+                    "endYear, runtimeMinutes, genres",
     "name_basics": "nconst, primaryName, birthYear, deathYear, primaryProfession, knownForTitles",
     "title_episodes": "tconst, parentTconst, seasonNumber, episodeNumber"
 }
@@ -45,6 +45,6 @@ redis_models_fields_tuple = {
     "title_basics": ("@tconst", "@titleType", "@primaryTitle", "@originalTitle", "@isAdult", "@startYear",
                      "@endYear", "@runtimeMinutes", "@genres"),
     "name_basics": ("@nconst", "@primaryName", "@birthYear", "@deathYear", "@primaryProfession",
-                     "@knownForTitles"),
+                    "@knownForTitles"),
     "title_episodes": ("@tconst", "@parentTconst", "@seasonNumber", "@episodeNumber")
 }

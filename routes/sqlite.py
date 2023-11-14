@@ -1,10 +1,9 @@
 # libraries imports
-import sqlite3
-
 from fastapi import APIRouter, Header, HTTPException, Query, Body, Path
 from typing import Annotated, List
 from datetime import datetime
 import os
+import sqlite3
 
 
 # packages imports
@@ -379,4 +378,3 @@ async def update_record_sqlite(
     except sqlite3.Error:
         print("[ERROR] Can not connect to the database")
         raise http_custom_error.cannot_connect_to_db
-

@@ -208,7 +208,7 @@ async def insert_mongo(
                 "tconst": title_basics.tconst, "titleType": title_basics.titleType,
                 "primaryTitle": title_basics.primaryTitle, "originalTitle": title_basics.originalTitle,
                 "isAdult": int(title_basics.isAdult), "startYear": int(title_basics.startYear),
-                "endYear": int(title_basics.endYear),"runtimeMinutes": int(title_basics.runtimeMinutes),
+                "endYear": int(title_basics.endYear), "runtimeMinutes": int(title_basics.runtimeMinutes),
                 "genres": title_basics.genres
             })
 
