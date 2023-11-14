@@ -28,4 +28,3 @@ class UserAuthRes(BaseModel):
 
 
 # DATABASE
-

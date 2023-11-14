@@ -71,7 +71,7 @@ def validate_table_name_optional(table_name: str):
 
 # validate structure of the data provided
 async def validate_db_structure(data: Annotated[dict, Body(title="Data to be updated",
-                                                        description="Body of the data to be updated in the database")]):
+                                                    description="Body of the data to be updated in the database")]):
     valid_field = False
 
     if data["table_name"] == "title_basics":

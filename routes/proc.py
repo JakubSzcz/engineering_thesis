@@ -3,7 +3,6 @@ from fastapi import APIRouter, Header, HTTPException, Body, Query, Depends
 from typing import Annotated
 import httpx
 import asyncio
-import re
 
 # packages imports
 from utilities import functions as fun
@@ -206,8 +205,8 @@ async def get_data(
         )
 
 
-@proc_router.patch("/data", status_code=200,
-                 description="Update specified record data in the table", response_description="Update confirmation")
+@proc_router.patch("/data", status_code=200, description="Update specified record data in the table",
+                   response_description="Update confirmation")
 async def update_data(
     db_type: Annotated[str, Depends(fun.validate_db_type)],
     table_name: Annotated[str, Depends(fun.validate_table_name)],
