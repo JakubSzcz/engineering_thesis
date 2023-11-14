@@ -35,5 +35,3 @@ class UserAuthReq(BaseModel):
 class CachedTokenInfo(BaseModel):
     expiration_date: datetime
     token: str
-
-

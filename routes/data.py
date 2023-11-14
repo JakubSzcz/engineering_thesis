@@ -1,5 +1,5 @@
 # libraries import
-from fastapi import APIRouter, Header, HTTPException, Body, exceptions, Path, Depends
+from fastapi import APIRouter, Header, HTTPException, Body, Path, Depends
 from typing import Annotated
 from datetime import datetime
 import httpx
@@ -30,8 +30,9 @@ data_router = APIRouter(
                     500: openapi.cannot_connect_to_proc_api
                   })
 async def insert_data_to_db(
-        db_type: Annotated[str, Header(title="Database type", description="Select database you want to retrieve users "
-                                                                        "info from: ['redis', 'mdb', 'psql', 'sqlite']",
+        db_type: Annotated[str, Header(title="Database type", description="Select database you want to "
+                                                                          "retrieve users info from:"
+                                                                          " ['redis', 'mdb', 'psql', 'sqlite']",
                                        examples=['redis', 'mdb', 'psql', 'sqlite'])],
         title_basics: Annotated[querry_db.InsertTitleBasic | None, Body()] = None,
         name_basics: Annotated[querry_db.InsertNameBasic | None, Body()] = None,

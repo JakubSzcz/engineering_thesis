@@ -43,4 +43,3 @@ class DatabaseType(str, Enum):
 class CachedUserInfo(BaseModel):
     expiration_date: datetime
     client_id: str
-

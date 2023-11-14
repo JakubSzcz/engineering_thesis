@@ -62,7 +62,8 @@ class GetResponses(BaseModel):
 
 
 class GetTableResponses(BaseModel):
-    message: str = Field(title="Message information", examples=["Records from table {table_name} successfully retrieved"],
+    message: str = Field(title="Message information", examples=["Records from table {table_name} "
+                                                                "successfully retrieved"],
                          default="Records successfully retrieved")
     db_type: str = Field(title="Database type", examples=["PSQL"])
     table_name: str = Field(title="Table name", description="Data retrieved from specified table",

@@ -27,8 +27,9 @@ user_router = APIRouter(
                      500: openapi.cannot_connect_to_proc_api
                  })
 async def retrieve_user(
-        db_type: Annotated[str, Header(title="Database type", description="Select database you want to retrieve users "
-                                                                        "info from: ['redis', 'mdb', 'psql', 'sqlite']",
+        db_type: Annotated[str, Header(title="Database type", description="Select database you want to "
+                                                                          "retrieve users info from:"
+                                                                          " ['redis', 'mdb', 'psql', 'sqlite']",
                                        examples=['redis', 'mdb', 'psql', 'sqlite'])],
         username: Annotated[str, Path(title="User id", description="User username unique char sequence",
                                       example="test_test_test_test")]
@@ -65,8 +66,9 @@ async def retrieve_user(
                      500: openapi.cannot_connect_to_proc_api
                  })
 async def retrieve_all_users(
-        db_type: Annotated[str, Header(title="Database type", description="Select database you want to retrieve users "
-                                                            "info from", examples=['redis', 'mdb', 'psql', 'sqlite'])]
+        db_type: Annotated[str, Header(title="Database type", description="Select database you want to"
+                                                                          " retrieve users info from",
+                                       examples=['redis', 'mdb', 'psql', 'sqlite'])]
 ) -> user.GetUsersInfoRes:
 
     # send request to the proc_api
@@ -101,8 +103,9 @@ async def retrieve_all_users(
                         500: openapi.cannot_connect_to_proc_api
                     })
 async def delete_user(
-        db_type: Annotated[str, Header(title="Database type", description="Select database you want to store user info"
-                                                            "info from", examples=['redis', 'mdb', 'psql', 'sqlite'])],
+        db_type: Annotated[str, Header(title="Database type", description="Select database you want "
+                                                                          "to store user info from",
+                                       examples=['redis', 'mdb', 'psql', 'sqlite'])],
         username: Annotated[str, Path(title="User id", description="User username unique char sequence",
                                       example="test_test_test_test")]
 ):
@@ -138,8 +141,9 @@ async def delete_user(
                       500: openapi.cannot_connect_to_proc_api
                   })
 async def create_user(
-        db_type: Annotated[str, Header(title="Database type", description="Select database you want to store user info"
-                                                            "info from", examples=['redis', 'mdb', 'psql', 'sqlite'])]
+        db_type: Annotated[str, Header(title="Database type", description="Select database you want to "
+                                                                          "store user info from",
+                                       examples=['redis', 'mdb', 'psql', 'sqlite'])]
 ) -> user.CreateUserRes:
 
     # send request to the proc_api
