@@ -4,6 +4,7 @@ from typing import Annotated, List
 from datetime import datetime
 import os
 import sqlite3
+import pandas as pd
 
 
 # packages imports
@@ -378,3 +379,53 @@ async def update_record_sqlite(
     except sqlite3.Error:
         print("[ERROR] Can not connect to the database")
         raise http_custom_error.cannot_connect_to_db
+
+
+@sqli_router.get("/import/data", status_code=200, description="Import records into sqlite")
+async def import_data():
+
+    print("Starting import")
+    db.connect()
+    print("Importing tb...")
+    # tb
+    df = pd.read_csv(title_basics_path, sep='\t')
+    df.to_sql("title_basics", db.conn, if_exists='append', index=False)
+
+    print("Importing nb...")
+    # nb
+    df = pd.read_csv(name_basics_path, sep='\t')
+    df.to_sql("name_basics", db.conn, if_exists='append', index=False)
+
+    print("Importing te...")
+    # te
+    df = pd.read_csv(title_episodes_path, sep='\t')
+    df.to_sql("title_episodes", db.conn, if_exists='append', index=False)
+    db.commit()
+    print("Import finished")
+
+    return "Import finished"
+
+
+# QUERIES
+@sqli_router.get("/queries/{query_id}", status_code=200, description="Perform query operation on SQLite",
+                 response_description="Query result")
+async def execute_query_sqlite(
+        query_id: Annotated[int, Path(title="Query identifier", description="Query id you want to execute",
+                                      example="1")]
+):
+    try:
+        # execute query
+        db.connect()
+        db.execute(querry_db.queries["sqlite"][query_id-1])
+        data = db.get_query_results()
+        db.commit()
+
+    # cannot connect to db
+    except sqlite3.Error:
+        print("[ERROR] Can not connect to the database")
+        raise http_custom_error.cannot_connect_to_db
+
+    if not data:
+        return {"message": "Query response was empty. Consider updating database"}
+    else:
+        return data

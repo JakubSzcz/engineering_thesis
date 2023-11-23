@@ -30,7 +30,7 @@ PG_DB = "postgres_db"
 # MONGODB
 MDB_PORT = 2021
 MDB_HOST = "localhost"
-MDB_DB = "mongo_db"
+MDB_DB = "mong_db"
 MDB_PSW = "mongo"
 
 # REDIS
@@ -73,7 +73,7 @@ tables_names = ["title_basics", "name_basics", "title_episodes"]
 # POSTGRES
 tables_create_psql = {
     "title_basics": "CREATE TABLE title_basics (tconst VARCHAR(255) PRIMARY KEY, titleType VARCHAR(255), primaryTitle "
-                    "VARCHAR(255), originalTitle VARCHAR(255), isAdult BOOLEAN, startYear INTEGER, endYear INTEGER, "
+                    "VARCHAR(300), originalTitle VARCHAR(300), isAdult BOOLEAN, startYear INTEGER, endYear INTEGER, "
                     "runtimeMinutes INTEGER, genres VARCHAR(255));",
     "name_basics": "CREATE TABLE name_basics (nconst VARCHAR(255) PRIMARY KEY, primaryName VARCHAR(255), birthYear "
                   "INTEGER, deathYear INTEGER, primaryProfession VARCHAR(255)[3], "
@@ -108,7 +108,7 @@ indexes_create_schema = {
             NumericField(name='runtimeMinutes'),
             TextField(name='genres')
         ],
-        "prefix": "title_basics:"
+        "prefix": "tb:"
     },
     "name_basics": {
         "schema": [
@@ -119,7 +119,7 @@ indexes_create_schema = {
             TagField(name='primaryProfession'),
             TagField(name='knownForTitles')
         ],
-        "prefix": "name_basics:"
+        "prefix": "nb:"
     },
     "title_episodes": {
         "schema": [
@@ -128,7 +128,7 @@ indexes_create_schema = {
             NumericField(name='seasonNumber'),
             NumericField(name='episodeNumber')
         ],
-        "prefix": "title_episodes:"
+        "prefix": "te:"
     },
     "users": {
         "schema": (
@@ -166,3 +166,9 @@ tables_insert_sqli = {
     "title_episodes": "INSERT INTO title_episodes (tconst, parentTconst, seasonNumber, episodeNumber)"
                   " VALUES (\'{tconst}\', \'{parentTconst}\', \'{seasonNumber}\', \'{episodeNumber}\')"
 }
+
+
+# DATABASE
+title_basics_path = "../../bazy/title.basics.tsv/data_url_psql.tsv"
+name_basics_path = "../../bazy/name.basics.tsv/data_url_psql.tsv"
+title_episodes_path = "../../bazy/title.episode.tsv/data_url_psql.tsv"

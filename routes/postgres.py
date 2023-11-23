@@ -1,5 +1,5 @@
 # libraries imports
-from fastapi import APIRouter, Header, HTTPException, Query, Body, Path
+from fastapi import APIRouter, Header, HTTPException, Query, Body, Path, Response
 from typing import Annotated, List
 import psycopg2.errors
 
@@ -425,3 +425,28 @@ async def update_record_postgres(
     except psycopg2.errors.ConnectionException:
         print("[ERROR] Can not connect to the database")
         raise http_custom_error.cannot_connect_to_db
+
+
+# QUERIES
+@psql_router.get("/queries/{query_id}", status_code=200, description="Perform query operation on postgres",
+                 response_description="Query result")
+async def execute_query_postgres(
+        query_id: Annotated[int, Path(title="Query identifier", description="Query id you want to execute",
+                                      example="1")]
+):
+    try:
+        # execute query
+        db.connect(True)
+        db.execute(querry_db.queries["psql"][query_id-1])
+        data = db.get_query_results()
+        db.commit()
+
+    # cannot connect to db
+    except psycopg2.errors.ConnectionException:
+        print("[ERROR] Can not connect to the database")
+        raise http_custom_error.cannot_connect_to_db
+
+    if not data:
+        return {"message": "Query response was empty. Consider updating database"}
+    else:
+        return data
