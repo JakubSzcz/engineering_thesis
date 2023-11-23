@@ -1,4 +1,6 @@
 # library imports
+import re
+
 from fastapi import APIRouter, Header, HTTPException, Body, Query, Depends
 from typing import Annotated
 import httpx
@@ -242,4 +244,37 @@ async def update_data(
         raise HTTPException(
             status_code=old_data_response.status_code,
             detail=old_data_response.json()["detail"]
+        )
+
+
+@proc_router.get("/query", status_code=200, description="Perform query operation on provided database",
+                 response_description="Query result")
+async def execute_query(
+        db_type: Annotated[str, Depends(fun.validate_db_type)],
+        query_id: Annotated[str, Query(title="Query identifier", description="Identifies which query to perform",
+                                       example="query_1")]
+):
+    # validate query
+    if not re.match(r'^query_\d+$', query_id):
+        raise HTTPException(
+            status_code=404,
+            detail="No such query_id. Possible queries ids are: ['query_1', 'query_2', 'query_1']"
+        )
+    else:
+        # remove 'query' prefix
+        query_id = int(query_id[6:])
+
+    # send request to the endpoint with specific query_id
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            url=fun.compose_url(SYS_IP, SYS_PORT) + f"/{db_type}/queries/{query_id}",
+            timeout=100000
+        )
+    # handel response
+    if response.status_code == 200:
+        return response.json()
+    else:
+        raise HTTPException(
+            status_code=response.status_code,
+            detail=response.json()["detail"]
         )
