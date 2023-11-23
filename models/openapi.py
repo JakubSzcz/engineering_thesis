@@ -69,3 +69,21 @@ no_such_record = {
     },
     "description": "No record with such id has been found."
 }
+
+db_reset_200 = {
+    "content": {
+        "application/json": {
+            "example": {"detail": "Restart of this databases has finished with a success: [psql, mdb, sqlite]"}
+        }
+    },
+    "description": "Database was successfully restored to it's original state."
+}
+
+db_reset_500 = {
+    "content": {
+        "application/json": {
+            "example": {"detail": "Restart of this database failed: [redis]"}
+        }
+    },
+    "description": "There was unknown error while trying to reset databases."
+}

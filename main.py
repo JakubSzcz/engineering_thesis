@@ -7,6 +7,7 @@ from routes.admin import admin_router
 from routes.auth import auth_router
 from routes.data import data_router
 from routes.user import user_router
+from routes.queries import query_router
 from cache import Cache
 from config import *
 
@@ -25,6 +26,7 @@ app.include_router(admin_router)
 app.include_router(auth_router)
 app.include_router(data_router)
 app.include_router(user_router)
+app.include_router(query_router)
 
 
 # launch server

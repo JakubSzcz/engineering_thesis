@@ -14,10 +14,6 @@ user_router = APIRouter(
     tags=["User"],
 )
 
-
-# ### functions ###
-
-
 # ### endpoints ###
 @user_router.get("/{username}", status_code=200, description="Retrieve user by it username",
                  response_description="User info from database",

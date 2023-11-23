@@ -128,3 +128,19 @@ class PatchRecordResponses(BaseModel):
                             examples=["title_basics"])
     old_data: dict = Field(title="Old data response", description="Old data details")
     new_data: dict = Field(title="New data response", description="New data details")
+
+
+queries_list_info = {
+    "query_1":
+        {
+            "description": "Find the average age of actors/actresses (primaryProfession = 'actor' or 'actress')"
+                           " for titles that are of type 'movie' and have a runtime greater than 120 minutes.",
+            "tables_involved": ["title_basics", "name_basics"]
+         },
+    "query_2":
+        {
+            "description": "Find top 10 tvSeries based on theirs season number, where start year is greater than 2000",
+            "tables_involved": ["title_basics", "title_episodes"]
+        }
+}
+

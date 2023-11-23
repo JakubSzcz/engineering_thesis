@@ -24,7 +24,7 @@ PG_PORT = "2020"
 PG_USR = "postgres"
 
 # JWT
-ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 30 minutes
+ACCESS_TOKEN_EXPIRE_MINUTES = 360  # 30 minutes
 JWT_ALGORITHM = "HS256"
 JWT_SECRET_KEY = "39B14A7C47F4AE6B1DC365B8F341E1A0F33D7B41662E3274E427DD3B227E49A1"
 JWT_ISS = "http://" + PROC_IP + "/proc_api"
@@ -57,13 +57,58 @@ tags_metadata_exp_api = [
     {
         "name": "Data",
         "description": "Databases related CRUD operation"
+    },
+    {
+        "name": "Queries",
+        "description": "Performance research related operations"
     }
 ]
 
 # DATABASE
 title_basics_path = "../../bazy/title.basics.tsv/data.tsv"
-title_basics_path_url = "../../bazy/title.basics.tsv/data_url.tsv"
+title_basics_path_url = "../../bazy/title.basics.tsv/data_url_{db_type}.{file_ext}"
 name_basics_path = "../../bazy/name.basics.tsv/data.tsv"
-name_basics_path_url = "../../bazy/name.basics.tsv/data_url.tsv"
+name_basics_path_url = "../../bazy/name.basics.tsv/data_url_{db_type}.{file_ext}"
 title_episodes_path = "../../bazy/title.episode.tsv/data.tsv"
-title_episodes_path_url = "../../bazy/title.episode.tsv/data_url.tsv"
+title_episodes_path_url = "../../bazy/title.episode.tsv/data_url_{db_type}.{file_ext}"
+
+dtype_database = {
+    "tb": {
+        "tconst": "string",
+        "titleType": "string",
+        "primaryTitle": "string",
+        "originalTitle": "string",
+        "startYear": int,
+        "endYear": int,
+        "genres": "string"
+
+    },
+    "nb": {
+        "nconst": "string",
+        "primaryName": "string",
+        "birthYear": int,
+        "deathYear": int,
+        "primaryProfession": "string",
+        "knownForTitles": "string"
+    },
+    "te": {
+        "tconst": "string",
+        "parentTconst": "string",
+        "seasonNumber": int,
+        "episodeNumber": int
+    }
+}
+
+test_path = "../../bazy/title.basics.tsv/redis_test.tsv"
+test_path_url = "../../bazy/title.basics.tsv/test_url_{db_type}.{file_ext}"
+
+
+redis_data_preparation = {
+    "tb": "HSET tb:{counter} tconst \"{tconst}\" titleType: \"{titleType}\" primaryTitle \"{primaryTitle}\" "
+          "originalTitle \"{originalTitle}\" isAdult \"{isAdult}\" startYear \"{startYear}\" endYear \"{endYear}\" "
+          "runtimeMinutes \"{runtimeMinutes}\" genres \"{genres}\"",
+    "nb": "HSET nb:{counter} nconst \'{nconst}\' primaryName \'{primaryName}\' birthYear \'{birthYear}\' deathYear "
+          "\'{deathYear}\' primaryProfession \'{primaryProfession}\' knownForTitles \'{knownForTitles}\'",
+    "te": "HSET te:{counter} tconst \'{tconst}\' parentTconst \'{parentTconst}\' seasonNumber \'{seasonNumber}\' "
+          "episodeNumber \'{episodeNumber}\'"
+}
