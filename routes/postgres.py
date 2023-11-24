@@ -1,5 +1,22 @@
+# contains all postgres operations endpoints
+# prefix: /psql
+# authorization required: False
+# endpoints list:
+#   -GET /user/validate - returns true if user exists in postgres
+#   -GET /users - returns users details from postgres
+#   -POST /users - creates new user in postgres
+#   -DELETE /users - deletes user from postgres
+#   -GET /restart - erase all data from postgres
+#   -GET /data - returns all data from postgres
+#   -GET /data/{table_name} - returns all data from specific table from postgres
+#   -GET /data/{table_name}/{record_id} - returns record details from specific table from postgres
+#   -POST /data - creates new data instance in postgres
+#   -DELETE /data - deletes specific record from postgres
+#   -PATCH /data/{table_name}/{record_id} - updates specific record in postgres
+#   -GET /queries/{query_id} - execute query in postgres
+
 # libraries imports
-from fastapi import APIRouter, Header, HTTPException, Query, Body, Path, Response
+from fastapi import APIRouter, Header, HTTPException, Query, Body, Path
 from typing import Annotated, List
 import psycopg2.errors
 
@@ -30,20 +47,19 @@ async def validate_user(
                                                                                   " client in order to"
                                                                                   " identifies users")]
 ) -> user.UserExistsRes:
+
     # connect to the database
     try:
         db.connect(True)
     except Exception:
         print("[ERROR] Can not connect to the database")
-        raise HTTPException(
-            status_code=500,
-            detail="Can not connect to the database"
-        )
-    # execute query, fetch response and close connection
+        raise http_custom_error.cannot_connect_to_db
+
+    # check if user with such username exists
     db.execute(f"SELECT * FROM users WHERE username = '{user_username}'")
     db_response = db.get_query_results()
     db.commit()
-    # check if user with such username exists
+
     # return response accordingly
     if not db_response:
         return user.UserExistsRes(exist=False)
@@ -67,10 +83,7 @@ async def get_user_info(
         db.connect(True)
     except Exception:
         print("[ERROR] Can not connect to the database")
-        raise HTTPException(
-            status_code=500,
-            detail="Can not connect to the database"
-        )
+        raise http_custom_error.cannot_connect_to_db
 
     # if username was not provided select all users
     if username is None:
@@ -79,10 +92,8 @@ async def get_user_info(
         db_response = db.get_query_results()
         db.commit()
         if not db_response:
-            raise HTTPException(
-                status_code=404,
-                detail="User database is empty"
-            )
+            raise http_custom_error.database_empty
+
         # prepare list of users to return
         users = []
         for user_db in db_response:
@@ -91,6 +102,7 @@ async def get_user_info(
                 creation_date=user_db["creation_date"]
             ))
         return users
+
     # if username was provided
     else:
         # execute query, fetch response and close connection
@@ -98,10 +110,8 @@ async def get_user_info(
         db_response = db.get_query_results()
         db.commit()
         if not db_response:
-            raise HTTPException(
-                status_code=404,
-                detail="No user with a such username"
-            )
+            raise http_custom_error.no_such_record
+
         # return response
         return user.GetUserInfoRes(
                 user_id=db_response[0]["user_id"], username=db_response[0]["username"],
@@ -119,20 +129,21 @@ async def insert_user(
         password_hash: Annotated[str, Body(title="Password", description="Unique user username",
                                            examples=["sadasdasdasdasd"])]
 ):
+
     # connect to the database and executes query
     try:
         db.connect(True)
     except Exception:
         print("[ERROR] Can not connect to the database")
-        raise HTTPException(
-            status_code=500,
-            detail="Can not connect to the database"
-        )
+        raise http_custom_error.cannot_connect_to_db
+
+    # try to insert new user
     try:
         db.execute(f"INSERT INTO users (username, password_hashed) VALUES ('{username}', '{password_hash}');")
     except Exception as e:
         db.commit()
         raise e
+
     db.commit()
     return {"message": "New user created in PostgreSQL"}
 
@@ -147,29 +158,28 @@ async def delete_user(
         username: Annotated[str, Query(title="Username", description="Unique user username",
                                        examples=["text_test_test_test1"])],
 ):
+
     # connect to the database and execute query
     try:
         db.connect(True)
     except Exception:
         print("[ERROR] Can not connect to the database")
-        raise HTTPException(
-            status_code=500,
-            detail="Can not connect to the database"
-        )
+        raise http_custom_error.cannot_connect_to_db
+
     try:
         # check if user which is to be deleted exist in the database
         db.execute(f"SELECT user_id FROM users WHERE username = '{username}'")
         db_response = db.get_query_results()
         if not db_response:
-            raise HTTPException(
-                status_code=404,
-                detail="No user with a such username"
-            )
+            raise http_custom_error.no_such_record
+
         # delete user from the database
         db.execute(f"DELETE FROM users WHERE username = '{username}';")
+
     except Exception as e:
         db.commit()
         raise e
+
     db.commit()
     return {"message": "User deleted from PostgreSQL"}
 
@@ -204,6 +214,7 @@ def restart_postgres():
                 # create table
                 db.execute(tables_create_psql[table_name])
         db.commit()
+
     except Exception:
         raise HTTPException(
             status_code=500,
@@ -216,19 +227,24 @@ def restart_postgres():
     return {"message": "Postgres database data set has been reset"}
 
 
-@psql_router.post("/data", description="Insert data to the PostgreSQL", status_code=201)
-async def insert(
+@psql_router.post("/data", description="Insert data to the PostgreSQL", status_code=201,
+                  responses={
+                      201: openapi.data_inserted,
+                      422: openapi.no_data_provided,
+                      521: openapi.cannot_connect_to_db
+                  })
+async def insert_data_postgres(
     title_basics: Annotated[querry_db.InsertTitleBasic | None, Body()] = None,
     name_basics: Annotated[querry_db.InsertNameBasic | None, Body()] = None,
     title_episode: Annotated[querry_db.InsertTitleEpisode | None, Body()] = None,
 ):
+
     # if none data has been provided, rais an error
     if title_basics is None and name_basics is None and title_episode is None:
         raise http_custom_error.lack_of_data
 
     # check which data has been provided
     try:
-
         db.connect(True)
         # insert data if provided
 
@@ -260,8 +276,8 @@ async def insert(
                     seasonNumber=int(title_episode.seasonNumber), episodeNumber=int(title_episode.episodeNumber)
                 )
             )
-
         db.commit()
+
     # syntax error handling
     except psycopg2.errors.SyntaxError as e:
         print("[ERROR] There has been a syntax error while inserting record into db")
@@ -277,6 +293,7 @@ async def insert(
         print("[ERROR] There is already record with such id in the database")
         db.commit()
         raise http_custom_error.record_duplicated
+
     # cannot connect to db
     except psycopg2.errors.ConnectionException:
         print("[ERROR] Can not connect to the database")
@@ -285,11 +302,16 @@ async def insert(
     return {"message": "Record has been inserted successfully."}
 
 
-@psql_router.delete("/data", status_code=200, description="Deletes resource from postgres")
+@psql_router.delete("/data", status_code=200, description="Deletes resource from postgres",
+                    responses={
+                       404: openapi.no_such_record,
+                       521: openapi.cannot_connect_to_db
+                    })
 async def delete_data_postgres(
         table_name: Annotated[str, Query(title="Table name", examples=["title_basics"])],
         record_id: Annotated[str, Query(title="Username", examples=["tt0000004"])]
 ):
+
     # connect to the database
     try:
         # execute query
@@ -303,10 +325,7 @@ async def delete_data_postgres(
             db.commit()
         else:
             db.commit()
-            raise HTTPException(
-                status_code=404,
-                detail="There is no such record in the database"
-            )
+            raise http_custom_error.no_such_record
 
     # syntax error handling
     except psycopg2.errors.SyntaxError as e:
@@ -318,6 +337,7 @@ async def delete_data_postgres(
                 "message": "Invalid SQL syntax while inserting into database.",
                 "error_detail": str(e)
             })
+
     # cannot connect to db
     except psycopg2.errors.ConnectionException:
         print("[ERROR] Can not connect to the database")
@@ -326,9 +346,14 @@ async def delete_data_postgres(
     return {"message": "Record deleted"}
 
 
-@psql_router.get("/data", status_code=200, description="Get all resources from postgres")
+@psql_router.get("/data", status_code=200, description="Get all resources from postgres",
+                 responses={
+                    200: openapi.get_all_data,
+                    521: openapi.cannot_connect_to_db
+                 })
 async def get_all_data_postgres(
 ):
+
     # connect to the database
     try:
         data = {}
@@ -351,11 +376,16 @@ async def get_all_data_postgres(
     }}
 
 
-@psql_router.get("/data/{table_name}", status_code=200, description="Get table resource from postgres")
+@psql_router.get("/data/{table_name}", status_code=200, description="Get table resource from postgres",
+                 responses={
+                    200: openapi.get_data,
+                    521: openapi.cannot_connect_to_db
+                 })
 async def get_table_data_postgres(
     table_name: Annotated[str, Path(title="Table name", description="Name of table you want to perform operation on",
                                     example="title_basics")]
 ):
+
     # connect to the database
     try:
         # execute query
@@ -368,16 +398,23 @@ async def get_table_data_postgres(
     except psycopg2.errors.ConnectionException:
         print("[ERROR] Can not connect to the database")
         raise http_custom_error.cannot_connect_to_db
+
     return {"data": data}
 
 
-@psql_router.get("/data/{table_name}/{record_id}", status_code=200, description="Get record resource from postgres")
+@psql_router.get("/data/{table_name}/{record_id}", status_code=200, description="Get record resource from postgres",
+                 responses={
+                    200: openapi.get_data,
+                    404: openapi.no_such_record,
+                    521: openapi.cannot_connect_to_db
+                 })
 async def get_record_data_postgres(
     table_name: Annotated[str, Path(title="Table name", description="Name of table you want to perform operation on",
                                     example="title_basics")],
     record_id: Annotated[str, Path(title="Record identifier", description="Identifies specific record in table",
                                    example="tt0000004")]
 ):
+
     # connect to the database
     try:
         # execute query
@@ -397,7 +434,11 @@ async def get_record_data_postgres(
     return {"data": data[0]}
 
 
-@psql_router.patch("/data/{table_name}/{record_id}", status_code=204, description="Update record in postgres")
+@psql_router.patch("/data/{table_name}/{record_id}", status_code=204, description="Update record in postgres",
+                   responses={
+                      404: openapi.no_such_record,
+                      521: openapi.cannot_connect_to_db
+                   })
 async def update_record_postgres(
         table_name: Annotated[
             str, Path(title="Table name", description="Name of table you want to perform operation on",
@@ -429,11 +470,15 @@ async def update_record_postgres(
 
 # QUERIES
 @psql_router.get("/queries/{query_id}", status_code=200, description="Perform query operation on postgres",
-                 response_description="Query result")
+                 response_description="Query result",
+                 responses={
+                    521: openapi.cannot_connect_to_db
+                 })
 async def execute_query_postgres(
         query_id: Annotated[int, Path(title="Query identifier", description="Query id you want to execute",
                                       example="1")]
 ):
+
     try:
         # execute query
         db.connect(True)

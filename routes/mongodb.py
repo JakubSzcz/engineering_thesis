@@ -1,3 +1,20 @@
+# contains all mongo operations endpoints
+# prefix: /mdb
+# authorization required: False
+# endpoints list:
+#   -GET /user/validate - returns true if user exists in mongo
+#   -GET /users - returns users details from mongo
+#   -POST /users - creates new user in mongo
+#   -DELETE /users - deletes user from mongo
+#   -GET /restart - erase all data from mongo
+#   -GET /data - returns all data from mongo
+#   -GET /data/{table_name} - returns all data from specific table from mongo
+#   -GET /data/{table_name}/{record_id} - returns record details from specific table from mongo
+#   -POST /data - creates new data instance in mongo
+#   -DELETE /data - deletes specific record from mongo
+#   -PATCH /data/{table_name}/{record_id} - updates specific record in mongo
+#   -GET /queries/{query_id} - execute query in mongo
+
 # libraries imports
 from fastapi import APIRouter, Header, HTTPException, Query, Body, Path
 from typing import Annotated, List
@@ -43,6 +60,7 @@ async def validate_user(
                                                                                   " client in order to"
                                                                                   " identifies users")]
 ) -> user.UserExistsRes:
+
     # retrieve data from db
     try:
         db_response = users.find_one({"username": user_username})
@@ -52,7 +70,7 @@ async def validate_user(
             status_code=500,
             detail="Can not connect to the database"
         )
-    # send response
+    # return response
     if db_response is None:
         return user.UserExistsRes(exist=False)
     else:
@@ -69,6 +87,7 @@ async def get_user_info(
         username: Annotated[str | None, Query(title="Username",
                                               description="Username by which you can retrieve its info from database")]
         = None) -> user.GetUserInfoRes | List[user.GetUserInfoRes]:
+
     # if username was not provided select all users
     if username is None:
         # handle errors
@@ -77,16 +96,10 @@ async def get_user_info(
             db_response = users.find()
         except ServerSelectionTimeoutError:
             print("[ERROR] Can not connect to the database")
-            raise HTTPException(
-                status_code=500,
-                detail="Can not connect to the database"
-            )
+            raise http_custom_error.cannot_connect_to_db
 
         if len(list(db_response.clone())) == 0:
-            raise HTTPException(
-                status_code=404,
-                detail="User database is empty",
-            )
+            raise http_custom_error.database_empty
 
         # prepare list of users to return
         users_to_return = []
@@ -95,15 +108,14 @@ async def get_user_info(
                 user_id=str(user_db["_id"]), username=user_db["username"],
                 is_admin=user_db["is_admin"], creation_date=user_db["creation_date"]))
         return users_to_return
+
     # if username was provided
     else:
         # execute query, fetch response and close connection
         db_response = users.find_one({"username": username})
         if db_response is None:
-            raise HTTPException(
-                status_code=404,
-                detail="No user with a such username"
-            )
+            raise http_custom_error.no_such_record
+
         # return response
         return user.GetUserInfoRes(
                 user_id=str(db_response["_id"]), username=db_response["username"],
@@ -121,15 +133,14 @@ async def insert_user(
         password_hash: Annotated[str, Body(title="Password", description="Unique user username",
                                            examples=["sadasdasdasdasd"])]
 ):
+    # insert data to database
     try:
         users.insert_one({"username": username, "password_hashed": password_hash,
                           "is_admin": False, "creation_date": datetime.utcnow()})
     except ServerSelectionTimeoutError:
         print("[ERROR] Can not connect to the database")
-        raise HTTPException(
-            status_code=500,
-            detail="Can not connect to the database"
-        )
+        raise http_custom_error.cannot_connect_to_db
+
     return {"message": "New user created in MongoDB"}
 
 
@@ -143,26 +154,24 @@ async def delete_user(
         username: Annotated[str, Query(title="Username", description="Unique user username",
                                        examples=["text_test_test_test1"])],
 ):
+
     # connect to the database and execute query
     try:
         if users.find_one({"username": username}):
             users.delete_one({"username": username})
         else:
-            raise HTTPException(
-                status_code=404,
-                detail="No user with a such username"
-            )
+            raise http_custom_error.no_such_record
+
     except ServerSelectionTimeoutError:
         print("[ERROR] Can not connect to the database")
-        raise HTTPException(
-            status_code=500,
-            detail="Can not connect to the database"
-        )
+        raise http_custom_error.cannot_connect_to_db
+
     return {"message": "User deleted from MongoDB"}
 
 
 @mdb_router.get("/restart", description="Restarts data MongoDB database", status_code=200)
 def restart_mongo():
+
     # connect to the database and executes query
     try:
         # restart all collections
@@ -171,7 +180,7 @@ def restart_mongo():
     except ServerSelectionTimeoutError:
         print("[ERROR] Can not connect to the database")
         raise HTTPException(
-            status_code=500,
+            status_code=521,
             detail={
                 "db_type": "mdb",
                 "message": "Can not connect to the database"
@@ -189,8 +198,13 @@ def restart_mongo():
     return {"message": "MongoDB database data set has been reset"}
 
 
-@mdb_router.post("/data", description="Insert data MongoDB database", status_code=201)
-async def insert_mongo(
+@mdb_router.post("/data", description="Insert data MongoDB database", status_code=201,
+                 responses={
+                     201: openapi.data_inserted,
+                     422: openapi.no_data_provided,
+                     521: openapi.cannot_connect_to_db
+                 })
+async def insert_data_mongo(
     title_basics: Annotated[querry_db.InsertTitleBasic | None, Body()] = None,
     name_basics: Annotated[querry_db.InsertNameBasic | None, Body()] = None,
     title_episode: Annotated[querry_db.InsertTitleEpisode | None, Body()] = None
@@ -229,22 +243,20 @@ async def insert_mongo(
 
     except ServerSelectionTimeoutError:
         print("[ERROR] Can not connect to the database")
-        raise HTTPException(
-            status_code=500,
-            detail="Can not connect to the database"
-        )
+        raise http_custom_error.cannot_connect_to_db
 
     # if none data has been provided, rais an error
     if no_data:
-        raise HTTPException(
-            status_code=422,
-            detail="None of the data to be inserted has been provided"
-        )
+        raise http_custom_error.no_data_provided
 
     return {"message":  "Record has been inserted successfully."}
 
 
-@mdb_router.delete("/data", status_code=200, description="Deletes resource from mongodb")
+@mdb_router.delete("/data", status_code=200, description="Deletes resource from mongodb",
+                   responses={
+                       404: openapi.no_such_record,
+                       521: openapi.cannot_connect_to_db
+                   })
 async def delete_data_mongo(
         table_name: Annotated[str, Query(title="Table name", examples=["title_basics"])],
         record_id: Annotated[str, Query(title="Username", examples=["tt0000004"])]
@@ -256,22 +268,23 @@ async def delete_data_mongo(
         if db[str(table_name)].find_one({indicator: record_id}):
             db[str(table_name)].delete_one({indicator: record_id})
         else:
-            raise HTTPException(
-                status_code=404,
-                detail="There is no such record in the database"
-            )
+            raise http_custom_error.no_such_record
+
     except ServerSelectionTimeoutError:
         print("[ERROR] Can not connect to the database")
-        raise HTTPException(
-            status_code=500,
-            detail="Can not connect to the database"
-        )
+        raise http_custom_error.cannot_connect_to_db
+
     return {"message": "Record deleted"}
 
 
-@mdb_router.get("/data", status_code=200, description="Get all resources from mongo")
+@mdb_router.get("/data", status_code=200, description="Get all resources from mongo",
+                responses={
+                    200: openapi.get_all_data,
+                    521: openapi.cannot_connect_to_db
+                })
 async def get_all_data_mongo(
 ):
+
     data = {}
     # connect to the database
     try:
@@ -290,11 +303,16 @@ async def get_all_data_mongo(
     }}
 
 
-@mdb_router.get("/data/{table_name}", status_code=200, description="Get table resource from mongo")
+@mdb_router.get("/data/{table_name}", status_code=200, description="Get table resource from mongo",
+                responses={
+                    200: openapi.get_data,
+                    521: openapi.cannot_connect_to_db
+                })
 async def get_table_data_mongo(
     table_name: Annotated[str, Path(title="Table name", description="Name of table you want to perform operation on",
                                     example="title_basics")]
 ):
+
     # connect to the database
     try:
         # execute query
@@ -308,13 +326,19 @@ async def get_table_data_mongo(
     return {"data": data}
 
 
-@mdb_router.get("/data/{table_name}/{record_id}", status_code=200, description="Get record resource from mongo")
+@mdb_router.get("/data/{table_name}/{record_id}", status_code=200, description="Get record resource from mongo",
+                responses={
+                    200: openapi.get_data,
+                    404: openapi.no_such_record,
+                    521: openapi.cannot_connect_to_db
+                })
 async def get_record_data_mongo(
     table_name: Annotated[str, Path(title="Table name", description="Name of table you want to perform operation on",
                                     example="title_basics")],
     record_id: Annotated[str, Path(title="Record identifier", description="Identifies specific record in table",
                                    example="tt0000004")]
 ):
+
     # connect to the database
     try:
         # execute query
@@ -332,7 +356,11 @@ async def get_record_data_mongo(
     return {"data": data}
 
 
-@mdb_router.patch("/data/{table_name}/{record_id}", status_code=204, description="Update record in mongo")
+@mdb_router.patch("/data/{table_name}/{record_id}", status_code=204, description="Update record in mongo",
+                  responses={
+                      404: openapi.no_such_record,
+                      521: openapi.cannot_connect_to_db
+                  })
 async def update_record_mongo(
         table_name: Annotated[
             str, Path(title="Table name", description="Name of table you want to perform operation on",
@@ -358,14 +386,17 @@ async def update_record_mongo(
 
 
 # QUERIES
-@mdb_router.get("/queries/{query_id}", status_code=200, description="Perform query operation on postgres",
-                response_description="Query result")
+@mdb_router.get("/queries/{query_id}", status_code=200, description="Perform query operation on mongo",
+                response_description="Query result",
+                responses={
+                    521: openapi.cannot_connect_to_db
+                })
 async def execute_query_mdb(
         query_id: Annotated[int, Path(title="Query identifier", description="Query id you want to execute",
                                       example="1")]
 ):
-    try:
 
+    try:
         # execute query
         data = title_basics_collection.aggregate(querry_db.queries["mdb"][query_id-1])
 

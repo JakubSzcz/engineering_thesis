@@ -1,3 +1,6 @@
+# Contains custom HTTP errors
+
+# imports
 from fastapi import HTTPException
 
 invalid_sql_syntax = HTTPException(
@@ -24,3 +27,13 @@ no_such_record = HTTPException(
                 status_code=404,
                 detail="There is no such record in the database"
             )
+
+database_empty = HTTPException(
+                status_code=404,
+                detail="Database is empty"
+            )
+
+no_data_provided = HTTPException(
+            status_code=422,
+            detail="None of the data to be inserted has been provided"
+        )

@@ -1,3 +1,4 @@
+# contains sqlite engines/connection/cursor operations
 import sqlite3
 
 

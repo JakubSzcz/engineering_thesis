@@ -1,3 +1,19 @@
+# contains all sqlite operations endpoints
+# prefix: /sqlite
+# authorization required: False
+# endpoints list:
+#   -GET /user/validate - returns true if user exists in sqlite
+#   -GET /users - returns users details from sqlite
+#   -POST /users - creates new user in sqlite
+#   -DELETE /users - deletes user from sqlite
+#   -GET /restart - erase all data from sqlite
+#   -GET /data - returns all data from sqlite
+#   -GET /data/{table_name} - returns all data from specific table from sqlite
+#   -GET /data/{table_name}/{record_id} - returns record details from specific table from sqlite
+#   -POST /data - creates new data instance in sqlite
+#   -DELETE /data - deletes specific record from sqlite
+#   -PATCH /data/{table_name}/{record_id} - updates specific record in sqlite
+
 # libraries imports
 from fastapi import APIRouter, Header, HTTPException, Query, Body, Path
 from typing import Annotated, List
@@ -30,12 +46,14 @@ if "sqlitedb.db" not in os.listdir("./SQL_engines"):
     # create title_episodes database
     db.execute(tables_create_sqli["title_episodes"])
     db.commit()
-# ### functions ###
 
 
 # ### endpoints ###
 @sqli_router.get("/user/validate", description="Validates whether user exists in SQLite",
-                 response_description="Returns flag and hashed_password if user exists", status_code=200)
+                 response_description="Returns flag and hashed_password if user exists", status_code=200,
+                 responses={
+                      500: openapi.cannot_connect_to_db
+                 })
 async def validate_user(
         user_username: Annotated[str, Header(example="abcdefgh12345678", min_length=16, max_length=32,
                                              title="Client username", description="Unique char sequence provided by the"
@@ -59,7 +77,8 @@ async def validate_user(
 @sqli_router.get("/users", description="Returns all the information stored about users or specified user",
                  response_description="Returns information retrieved from the database", status_code=200,
                  responses={
-                     404: openapi.database_empty
+                     404: openapi.no_username_found,
+                     500: openapi.cannot_connect_to_db
                  })
 async def get_user_info(
         username: Annotated[str | None, Query(title="Username",
@@ -75,10 +94,8 @@ async def get_user_info(
         db_response = db.get_query_results()
         db.commit()
         if not db_response:
-            raise HTTPException(
-                status_code=404,
-                detail="User database is empty"
-            )
+            raise http_custom_error.database_empty
+
         # prepare list of users to return
         users = []
         for user_db in db_response:
@@ -92,10 +109,8 @@ async def get_user_info(
         db_response = db.get_query_results()
         db.commit()
         if not db_response:
-            raise HTTPException(
-                status_code=404,
-                detail="No user with a such username"
-            )
+            raise http_custom_error.no_such_record
+
         db_response = db_response[0]
         # return response
         return user.GetUserInfoRes(user_id=db_response[0], username=db_response[1],
@@ -104,7 +119,8 @@ async def get_user_info(
 
 @sqli_router.post("/users", status_code=201, description="Create new user",
                   responses={
-                      201: openapi.new_user_created
+                      201: openapi.new_user_created,
+                      500: openapi.cannot_connect_to_db
                   })
 async def insert_user(
         username: Annotated[str, Body(title="Username", description="Unique user username",
@@ -112,24 +128,28 @@ async def insert_user(
         password_hash: Annotated[str, Body(title="Password", description="Unique user username",
                                            examples=["sadasdasdasdasd"])]
 ):
+
     timestamp = datetime.utcnow()
     # connect to the database and executes query
     db.connect()
     db.execute(f"INSERT INTO users (username, password_hashed, is_admin, creation_date) VALUES ('{username}', "
                f"'{password_hash}', 0, '{timestamp}');")
     db.commit()
+
     return {"message": "New user created in SQLite"}
 
 
 @sqli_router.delete("/users", status_code=200, description="Delete user from the database by the username",
                     responses={
                         200: openapi.user_deleted,
-                        404: openapi.no_username_found
+                        404: openapi.no_username_found,
+                        500: openapi.cannot_connect_to_db
                     })
 async def delete_user(
         username: Annotated[str, Query(title="Username", description="Unique user username",
                                        examples=["text_test_test_test1"])],
 ):
+
     # connect to the database and execute query
     db.connect()
     # check if user which is to be deleted exist in the database
@@ -137,13 +157,12 @@ async def delete_user(
     db_response = db.get_query_results()
     if not db_response:
         db.commit()
-        raise HTTPException(
-            status_code=404,
-            detail="No user with a such username"
-        )
+        raise http_custom_error.no_such_record
+
     # delete user from the database
     db.execute(f"DELETE FROM users WHERE username = '{username}';")
     db.commit()
+
     return {"message": "User deleted from SQLite"}
 
 
@@ -180,8 +199,13 @@ def restart_sqlite():
     return {"message": "SQLite database data set has been reset"}
 
 
-@sqli_router.post("/data", description="Insert data SQLite database", status_code=201)
-async def insert_sqlite(
+@sqli_router.post("/data", description="Insert data SQLite database", status_code=201,
+                  responses={
+                      201: openapi.data_inserted,
+                      422: openapi.no_data_provided,
+                      521: openapi.cannot_connect_to_db
+                  })
+async def insert_data_sqlite(
     title_basics: Annotated[querry_db.InsertTitleBasic | None, Body()] = None,
     name_basics: Annotated[querry_db.InsertNameBasic | None, Body()] = None,
     title_episode: Annotated[querry_db.InsertTitleEpisode | None, Body()] = None
@@ -233,22 +257,20 @@ async def insert_sqlite(
             raise http_custom_error.record_duplicated
         else:
             print("[ERROR] Can not connect to the database")
-            raise HTTPException(
-                status_code=500,
-                detail="Can not connect to the database"
-            )
+            raise http_custom_error.cannot_connect_to_db
 
     # if none data has been provided, rais an error
     if no_data:
-        raise HTTPException(
-            status_code=422,
-            detail="None of the data to be inserted has been provided"
-        )
+        raise http_custom_error.no_data_provided
 
     return {"message":  "Record has been inserted successfully."}
 
 
-@sqli_router.delete("/data", status_code=200, description="Deletes resource from sqlite")
+@sqli_router.delete("/data", status_code=200, description="Deletes resource from sqlite",
+                    responses={
+                        404: openapi.no_such_record,
+                        521: openapi.cannot_connect_to_db
+                    })
 async def delete_data_sqlite(
         table_name: Annotated[str, Query(title="Table name", examples=["title_basics"])],
         record_id: Annotated[str, Query(title="Username", examples=["tt0000004"])]
@@ -261,28 +283,29 @@ async def delete_data_sqlite(
         indicator = "nconst" if table_name == "name_basics" else "tconst"
         db.execute(f"SELECT 1 FROM {table_name} WHERE {indicator} = '{record_id}';")
         db_response = db.get_query_results()
+
         if not db_response:
             db.commit()
-            raise HTTPException(
-                status_code=404,
-                detail="There is no such record in the database"
-            )
+            raise http_custom_error.no_such_record
+
         else:
             db.execute(f"DELETE FROM {table_name} WHERE {indicator} = '{record_id}';")
             db.commit()
     except sqlite3.Error:
         print("[ERROR] Can not connect to the database")
-        raise HTTPException(
-            status_code=500,
-            detail="Can not connect to the database"
-        )
+        raise http_custom_error.cannot_connect_to_db
 
     return {"message": "Record deleted"}
 
 
-@sqli_router.get("/data", status_code=200, description="Get all resources from sqlite")
+@sqli_router.get("/data", status_code=200, description="Get all resources from sqlite",
+                 responses={
+                     200: openapi.get_all_data,
+                     521: openapi.cannot_connect_to_db
+                 })
 async def get_all_data_sqlite(
 ):
+
     # connect to the database
     try:
         data = {}
@@ -305,11 +328,16 @@ async def get_all_data_sqlite(
     }}
 
 
-@sqli_router.get("/data/{table_name}", status_code=200, description="Get table resource from sqlite")
+@sqli_router.get("/data/{table_name}", status_code=200, description="Get table resource from sqlite",
+                 responses={
+                     200: openapi.get_data,
+                     521: openapi.cannot_connect_to_db
+                 })
 async def get_table_data_sqlite(
     table_name: Annotated[str, Path(title="Table name", description="Name of table you want to perform operation on",
                                     example="title_basics")]
 ):
+
     # connect to the database
     try:
         # execute query
@@ -325,13 +353,19 @@ async def get_table_data_sqlite(
     return {"data": data}
 
 
-@sqli_router.get("/data/{table_name}/{record_id}", status_code=200, description="Get record resource from sqlite")
+@sqli_router.get("/data/{table_name}/{record_id}", status_code=200, description="Get record resource from sqlite",
+                 responses={
+                     200: openapi.get_data,
+                     404: openapi.no_such_record,
+                     521: openapi.cannot_connect_to_db
+                 })
 async def get_record_data_sqlite(
     table_name: Annotated[str, Path(title="Table name", description="Name of table you want to perform operation on",
                                     example="title_basics")],
     record_id: Annotated[str, Path(title="Record identifier", description="Identifies specific record in table",
                                    example="tt0000004")]
 ):
+
     # connect to the database
     try:
         # execute query
@@ -351,7 +385,11 @@ async def get_record_data_sqlite(
     return {"data": data[0]}
 
 
-@sqli_router.patch("/data/{table_name}/{record_id}", status_code=204, description="Update record in sqlite")
+@sqli_router.patch("/data/{table_name}/{record_id}", status_code=204, description="Update record in sqlite",
+                   responses={
+                       404: openapi.no_such_record,
+                       521: openapi.cannot_connect_to_db
+                   })
 async def update_record_sqlite(
         table_name: Annotated[
             str, Path(title="Table name", description="Name of table you want to perform operation on",
@@ -408,11 +446,15 @@ async def import_data():
 
 # QUERIES
 @sqli_router.get("/queries/{query_id}", status_code=200, description="Perform query operation on SQLite",
-                 response_description="Query result")
+                 response_description="Query result",
+                 responses={
+                     521: openapi.cannot_connect_to_db
+                 })
 async def execute_query_sqlite(
         query_id: Annotated[int, Path(title="Query identifier", description="Query id you want to execute",
                                       example="1")]
 ):
+
     try:
         # execute query
         db.connect()

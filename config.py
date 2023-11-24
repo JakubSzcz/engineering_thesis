@@ -47,7 +47,7 @@ System API purpose is to process all database engines operations and error handl
 * **Create user instance directly in database**
 * **Directly deletes user from database** 
 * **Verify if user exist in database** 
-* **Process testing database requests** (_not implemented_).
+* **Process testing database requests**
 """
 tags_metadata_sys_api = [
     {
@@ -108,7 +108,7 @@ indexes_create_schema = {
             NumericField(name='runtimeMinutes'),
             TextField(name='genres')
         ],
-        "prefix": "tb:"
+        "prefix": "title_basics:"
     },
     "name_basics": {
         "schema": [
@@ -119,7 +119,7 @@ indexes_create_schema = {
             TagField(name='primaryProfession'),
             TagField(name='knownForTitles')
         ],
-        "prefix": "nb:"
+        "prefix": "name_basics:"
     },
     "title_episodes": {
         "schema": [
@@ -128,7 +128,7 @@ indexes_create_schema = {
             NumericField(name='seasonNumber'),
             NumericField(name='episodeNumber')
         ],
-        "prefix": "te:"
+        "prefix": "title_episodes:"
     },
     "users": {
         "schema": (
@@ -168,7 +168,7 @@ tables_insert_sqli = {
 }
 
 
-# DATABASE
+# DATA IMPORTS
 title_basics_path = "../../bazy/title.basics.tsv/data_url_psql.tsv"
 name_basics_path = "../../bazy/name.basics.tsv/data_url_psql.tsv"
 title_episodes_path = "../../bazy/title.episode.tsv/data_url_psql.tsv"

@@ -1,3 +1,4 @@
+# contains postgres engines/connection/cursor operations
 import psycopg2
 from psycopg2.extras import RealDictCursor
 

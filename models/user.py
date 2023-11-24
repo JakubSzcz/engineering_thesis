@@ -1,8 +1,9 @@
+# contains models of responses/requests connected with user related operations
+
+# imports
 from pydantic import BaseModel, Field
 from datetime import datetime
 
-
-# REQUEST
 
 # RESPONSE
 class GetUserInfoRes(BaseModel):

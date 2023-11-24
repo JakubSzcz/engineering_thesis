@@ -1,3 +1,19 @@
+# contains all redis operations endpoints
+# prefix: /redis
+# authorization required: False
+# endpoints list:
+#   -GET /user/validate - returns true if user exists in redis
+#   -GET /users - returns users details from redis
+#   -POST /users - creates new user in redis
+#   -DELETE /users - deletes user from redis
+#   -GET /restart - erase all data from redis
+#   -GET /data - returns all data from redis
+#   -GET /data/{table_name} - returns all data from specific table from redis
+#   -GET /data/{table_name}/{record_id} - returns record details from specific table from redis
+#   -POST /data - creates new data instance in redis
+#   -DELETE /data - deletes specific record from redis
+#   -PATCH /data/{table_name}/{record_id} - updates specific record in redis
+
 # libraries imports
 from datetime import datetime
 from fastapi import APIRouter, Header, HTTPException, Query, Body, Path
@@ -26,8 +42,11 @@ indexes = {}
 
 
 # ### functions ###
-# ensure that certain index exists, if not, creates one
 def create_indexes(index_name: str):
+    # ensure that certain index exists, if not, creates one
+    # @params:
+    # index_name - name of index that will be created
+
     # try to retrieve index
     try:
         index = r.ft("idx:" + index_name)
@@ -46,8 +65,11 @@ def create_indexes(index_name: str):
         return r.ft("idx:" + index_name)
 
 
-# change list to the valid dict
 def redis_list_to_dict(data_list, table: str | None = None):
+    # change list to the valid dict aligning with redis requirements
+    # @params:
+    # data_list - list of resources that will be cast to redis dict
+    # table - [OPTIONAL] name of the resource table that fields will be used in cast process
 
     if table is not None:
         data = []
@@ -95,16 +117,15 @@ async def validate_user(
                                                                                   " client in order to"
                                                                                   " identifies users")]
 ) -> user.UserExistsRes:
+
     users = indexes["users"]
     # retrieve data from db
     try:
         db_response = users.search(redisQuery(f"@username:{user_username}"))
     except redis.exceptions.ConnectionError:
         print("[ERROR] Can not connect to the database")
-        raise HTTPException(
-            status_code=500,
-            detail="Can not connect to the database"
-        )
+        raise http_custom_error.cannot_connect_to_db
+
     # send response
     if len(db_response.docs) == 0:
         return user.UserExistsRes(exist=False)
@@ -132,15 +153,10 @@ async def get_user_info(
             db_response = users.search(redisQuery("*"))
         except redis.exceptions.ConnectionError:
             print("[ERROR] Can not connect to the database")
-            raise HTTPException(
-                status_code=500,
-                detail="Can not connect to the database"
-            )
+            raise http_custom_error.cannot_connect_to_db
+
         if len(db_response.docs) == 0:
-            raise HTTPException(
-                status_code=404,
-                detail="User database is empty",
-            )
+            raise http_custom_error.database_empty
 
         # prepare list of users to return
         users_to_return = []
@@ -150,16 +166,17 @@ async def get_user_info(
                 user_id=str(user_db["id"]).split(":")[1], username=user_db["username"],
                 is_admin=user_db["is_admin"], creation_date=user_db["creation_date"]))
         return users_to_return
+
     # if username was provided
     else:
         # execute query, fetch response and close connection
         db_response = users.search(redisQuery(f"@username:{username}"))
+
         if len(db_response.docs) == 0:
-            raise HTTPException(
-                status_code=404,
-                detail="No user with a such username"
-            )
+            raise http_custom_error.no_such_record
+
         db_response = db_response.docs[0]
+
         # return response
         return user.GetUserInfoRes(
                 user_id=str(db_response["id"]).split(":")[1], username=db_response["username"],
@@ -177,16 +194,16 @@ async def insert_user(
         password_hash: Annotated[str, Body(title="Password", description="Unique user username",
                                            examples=["sadasdasdasdasd"])]
 ):
+
+    # try to create new hashset with user inforamtion
     try:
         r.hset(name=("user:" + str(int(datetime.now().timestamp()))), mapping={
             "username": username, "password_hashed": password_hash,
             "is_admin": str(False), "creation_date": str(datetime.utcnow())})
     except redis.exceptions.ConnectionError:
         print("[ERROR] Can not connect to the database")
-        raise HTTPException(
-            status_code=500,
-            detail="Can not connect to the database"
-        )
+        raise http_custom_error.cannot_connect_to_db
+
     return {"message": "New user created in Redis"}
 
 
@@ -214,15 +231,14 @@ async def delete_user(
             )
     except redis.exceptions.ConnectionError:
         print("[ERROR] Can not connect to the database")
-        raise HTTPException(
-            status_code=500,
-            detail="Can not connect to the database"
-        )
+        raise http_custom_error.cannot_connect_to_db
+
     return {"message": "User deleted from Redis"}
 
 
 @redis_router.get("/restart", description="Restarts data Redis database", status_code=200)
 def restart_redis():
+
     # connect to the database and executes query
     try:
         # deletes all from database
@@ -253,8 +269,13 @@ def restart_redis():
     return {"message": "Redis database data set has been reset"}
 
 
-@redis_router.post("/data", description="Insert data Postgres database", status_code=201)
-async def insert_redis(
+@redis_router.post("/data", description="Insert data Postgres database", status_code=201,
+                   responses={
+                      201: openapi.data_inserted,
+                      422: openapi.no_data_provided,
+                      521: openapi.cannot_connect_to_db
+                   })
+async def insert_data_redis(
     title_basics: Annotated[querry_db.InsertTitleBasic | None, Body()] = None,
     name_basics: Annotated[querry_db.InsertNameBasic | None, Body()] = None,
     title_episode: Annotated[querry_db.InsertTitleEpisode | None, Body()] = None
@@ -314,26 +335,25 @@ async def insert_redis(
                 raise http_custom_error.record_duplicated
     except redis.exceptions.ConnectionError:
         print("[ERROR] Can not connect to the database")
-        raise HTTPException(
-            status_code=500,
-            detail="Can not connect to the database"
-        )
+        raise http_custom_error.cannot_connect_to_db
 
     # if none data has been provided, rais an error
     if no_data:
-        raise HTTPException(
-            status_code=422,
-            detail="None of the data to be inserted has been provided"
-        )
+        raise http_custom_error.no_data_provided
 
     return {"db_type": "redis", "message":  "Record has been inserted successfully."}
 
 
-@redis_router.delete("/data", status_code=200, description="Deletes resource from redis")
+@redis_router.delete("/data", status_code=200, description="Deletes resource from redis",
+                     responses={
+                       404: openapi.no_such_record,
+                       521: openapi.cannot_connect_to_db
+                     })
 async def delete_data_redis(
         table_name: Annotated[str, Query(title="Table name", examples=["title_basics"])],
         record_id: Annotated[str, Query(title="Username", examples=["tt0000004"])]
 ):
+
     # connect to index
     index = indexes[table_name]
 
@@ -344,31 +364,27 @@ async def delete_data_redis(
         if len(db_response.docs) != 0:
             r.delete(str(db_response.docs[0]["id"]))
         else:
-            raise HTTPException(
-                status_code=404,
-                detail="There is no such record in the database"
-            )
+            raise http_custom_error.no_such_record
+
     except redis.exceptions.ConnectionError:
         print("[ERROR] Can not connect to the database")
-        raise HTTPException(
-            status_code=500,
-            detail="Can not connect to the database"
-        )
+        raise http_custom_error.cannot_connect_to_db
+
     return {"message": "Record deleted"}
 
 
-@redis_router.get("/data", status_code=200, description="Get all resources from redis")
+@redis_router.get("/data", status_code=200, description="Get all resources from redis",
+                  responses={
+                    200: openapi.get_all_data,
+                    521: openapi.cannot_connect_to_db
+                  })
 async def get_all_data_redis(
 ):
+
     # connect to the database
     try:
         data_list = {}
-        """
-        for table_name in tables_names:
-            #query = redisQuery("*")
-            #query._num = indexes[table_name].search("*").total
-            #data[table_name] = indexes[table_name].search(query).docs
-        """
+
         for table_name in tables_names:
             data_list[table_name] = (indexes[table_name].aggregate(AggregateRequest("*").load().group_by(
                 querry_db.redis_models_fields_tuple[table_name])).rows)
@@ -386,11 +402,16 @@ async def get_all_data_redis(
     }}
 
 
-@redis_router.get("/data/{table_name}", status_code=200, description="Get table resource from redis")
+@redis_router.get("/data/{table_name}", status_code=200, description="Get table resource from redis",
+                  responses={
+                    200: openapi.get_data,
+                    521: openapi.cannot_connect_to_db
+                  })
 async def get_table_data_redis(
     table_name: Annotated[str, Path(title="Table name", description="Name of table you want to perform operation on",
                                     example="title_basics")]
 ):
+
     # connect to the database
     try:
 
@@ -406,13 +427,19 @@ async def get_table_data_redis(
     return {"data": data}
 
 
-@redis_router.get("/data/{table_name}/{record_id}", status_code=200, description="Get record resource from redis")
+@redis_router.get("/data/{table_name}/{record_id}", status_code=200, description="Get record resource from redis",
+                  responses={
+                    200: openapi.get_data,
+                    404: openapi.no_such_record,
+                    521: openapi.cannot_connect_to_db
+                  })
 async def get_record_data_redis(
     table_name: Annotated[str, Path(title="Table name", description="Name of table you want to perform operation on",
                                     example="title_basics")],
     record_id: Annotated[str, Path(title="Record identifier", description="Identifies specific record in table",
                                    example="tt0000004")]
 ):
+
     # connect to the database
     try:
 
@@ -437,7 +464,11 @@ async def get_record_data_redis(
     return {"data": data}
 
 
-@redis_router.patch("/data/{table_name}/{record_id}", status_code=204, description="Update record in redis")
+@redis_router.patch("/data/{table_name}/{record_id}", status_code=204, description="Update record in redis",
+                    responses={
+                      404: openapi.no_such_record,
+                      521: openapi.cannot_connect_to_db
+                    })
 async def update_record_redis(
         table_name: Annotated[
             str, Path(title="Table name", description="Name of table you want to perform operation on",

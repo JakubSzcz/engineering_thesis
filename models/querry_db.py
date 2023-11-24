@@ -1,7 +1,11 @@
+# contains models of responses/requests connected with data related operations and additional
+# information required for data processing
+
+# imports
 from pydantic import BaseModel, Field
 
 
-# model of request body to insert title_basic
+# REQUEST
 class InsertTitleBasic(BaseModel):
     tconst: str = Field(title="Title Basic Primary Key", examples=["tt0000001"])
     titleType: str = Field(title="Title type", examples=["short"])
@@ -15,7 +19,6 @@ class InsertTitleBasic(BaseModel):
     genres: str = Field(title="Primary Title", examples=["Romance"])
 
 
-# model of request body to insert name_basic
 class InsertNameBasic(BaseModel):
     nconst: str = Field(title="Name Basic Primary Key", examples=["nm0000001"])
     primaryName: str = Field(title="Primary Name", examples=["Richard Burton"])
@@ -26,7 +29,6 @@ class InsertNameBasic(BaseModel):
     knownForTitles: str = Field(title="Known For Titles", examples=["tt0057877,tt0087803,tt0061184,tt0059749"])
 
 
-# model of request body to insert title_episode
 class InsertTitleEpisode(BaseModel):
     tconst: str = Field(title="Title Episode Primary Key", examples=["tt0000001"])
     parentTconst: str = Field(title="Parent Title Episode/Basic Primary Key", examples=["tt0000001"])
@@ -34,13 +36,7 @@ class InsertTitleEpisode(BaseModel):
     episodeNumber: int = Field(title="Episode Number", examples=[16])
 
 
-redis_models_fields = {
-    "title_basics": "tconst, titleType, primaryTitle, originalTitle, isAdult, startYear, "
-                    "endYear, runtimeMinutes, genres",
-    "name_basics": "nconst, primaryName, birthYear, deathYear, primaryProfession, knownForTitles",
-    "title_episodes": "tconst, parentTconst, seasonNumber, episodeNumber"
-}
-
+# OTHERS
 redis_models_fields_tuple = {
     "title_basics": ("@tconst", "@titleType", "@primaryTitle", "@originalTitle", "@isAdult", "@startYear",
                      "@endYear", "@runtimeMinutes", "@genres"),
