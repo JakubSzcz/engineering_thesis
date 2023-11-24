@@ -1,3 +1,10 @@
+# contains endpoints for testing queries performance
+# prefix queries
+# authorization required: True
+# endpoints list:
+#   - /info - returns information about predefined queries
+#   - /{query_id} - execute provided query on the selected db engines
+
 # libraries import
 from fastapi import APIRouter, Header, HTTPException, Path, Depends
 from typing import Annotated
@@ -6,7 +13,7 @@ import httpx
 
 # packages import
 from config import *
-from models import querry_db, openapi, http_custom_error
+from models import querry_db, http_custom_error
 from utilities import functions as fun
 from routes.auth import is_user_authenticated
 
@@ -14,17 +21,18 @@ from routes.auth import is_user_authenticated
 query_router = APIRouter(
     prefix="/queries",
     tags=["Queries"],
+    dependencies=[Depends(is_user_authenticated)]
 )
 
 
 # ### endpoints ###
 @query_router.get("/info", status_code=200, description="Returns information about predefined query",
-                  response_description="List of predefined queries", dependencies=[Depends(is_user_authenticated)])
+                  response_description="List of predefined queries")
 async def predefined_query_get_info():
     return querry_db.queries_list_info
 
 
-@query_router.get("/{query_id}", status_code=200, dependencies=[Depends(is_user_authenticated)],
+@query_router.get("/{query_id}", status_code=200,
                   description="Returns result of predefined query", response_description="Query result")
 async def predefined_query_get(
         db_type: Annotated[str, Header(title="Database type", examples=['redis', 'mdb', 'psql', 'sqlite'],

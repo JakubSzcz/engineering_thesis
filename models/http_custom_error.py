@@ -1,3 +1,5 @@
+# Contains custom HTTP errors
+
 from fastapi import HTTPException
 
 cannot_connect_to_proc = HTTPException(

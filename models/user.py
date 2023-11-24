@@ -1,6 +1,8 @@
+# contains models of responses/requests connected with user related operations
+
+# imports
 from datetime import datetime
 from pydantic import BaseModel, Field
-from enum import Enum
 from typing import List
 
 
@@ -29,17 +31,8 @@ class CreateUserRes(BaseModel):
     password: str = Field(title="User password", description="User password",
                           example="jkdnasjknjkkj22nkjk1")
 
-# REQUESTS
 
-
-# DATABASE
-class DatabaseType(str, Enum):
-    REDIS = "redis",
-    PSQL = "psql",
-    MDB = "mdb"
-    SQLi = "sqlite"
-
-
+# NOT IN USE
 class CachedUserInfo(BaseModel):
     expiration_date: datetime
     client_id: str

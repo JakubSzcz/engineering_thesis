@@ -1,3 +1,12 @@
+# contains all user related endpoints and operations
+# prefix /users
+# authorization required: False
+# endpoints list:
+#   -GET / - retrieve all users information
+#   -GET /{username} - retrieve specified user information
+#   -DELETE /{username} - deletes specified user
+#   -POST / - create a new user
+
 # libraries import
 from fastapi import APIRouter, Header, HTTPException, Path
 from typing import Annotated
@@ -13,6 +22,7 @@ user_router = APIRouter(
     prefix="/users",
     tags=["User"],
 )
+
 
 # ### endpoints ###
 @user_router.get("/{username}", status_code=200, description="Retrieve user by it username",

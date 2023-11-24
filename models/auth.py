@@ -1,3 +1,5 @@
+# Contains request/responses models connected with authorization process
+
 # imports
 from pydantic import BaseModel, Field
 from datetime import datetime
@@ -15,23 +17,10 @@ class Token(BaseModel):
                                      examples=["2023-10-22T12:43:16.857Z"])
 
 
-class IsAuthenticatedRes(BaseModel):
-    is_authenticated: bool
-    client_id: str
-    details: str | None = None
-    token: Token | None = None
-    already_auth_flag: bool | None = None
+# OTHER
 
-
-# REQUEST
-class UserAuthReq(BaseModel):
-    client_secret_hashed: str
-    client_id: str
-    timestamp: datetime
-
-# DATABASE
-
-
+# NOT IN USE
 class CachedTokenInfo(BaseModel):
-    expiration_date: datetime
-    token: str
+    expiration_date: datetime = Field(description="Indicator for how long token is valid",
+                                      example="2023-11-26T10:29:10")
+    token: str = Field(description="Access token")

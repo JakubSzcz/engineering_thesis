@@ -1,4 +1,5 @@
-# openapi responses examples
+# contains OpenAPI responses examples and other resources for the interactive documentation
+
 user_deleted = {
     "content": {
         "application/json": {
@@ -7,6 +8,7 @@ user_deleted = {
     },
     "description": "There is no user with provided username in this database engin"
 }
+
 no_username_found = {
     "content": {
         "application/json": {
@@ -87,3 +89,39 @@ db_reset_500 = {
     },
     "description": "There was unknown error while trying to reset databases."
 }
+
+
+exp_description = """
+Experience API purpose is to handle all user related request and returns to users.
+## Experience API is responsible for:
+* **Create users** 
+* **Read users** 
+* **Delete users**
+* **Generates token**
+* **Insert data to Database**.
+* **Delete data from Database**.
+* **Queries data from Database**.
+"""
+
+tags_metadata_exp_api = [
+    {
+        "name": "Administration panel",
+        "description": "Admin operation such us direct access to the database resources"
+    },
+    {
+        "name": "Authorization",
+        "description": "Manage authorization related operations, like token generation."
+    },
+    {
+        "name": "User",
+        "description": "User related operations to all databases like insert, delete and read"
+    },
+    {
+        "name": "Data",
+        "description": "Databases related CRUD operation"
+    },
+    {
+        "name": "Queries",
+        "description": "Performance research related operations"
+    }
+]

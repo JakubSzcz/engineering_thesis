@@ -1,7 +1,12 @@
-# imports
+# NOT IN USE
+# implements caching system for retrieving already authorized tokens, deprecated
+
+# library imports
 from datetime import datetime
 from typing import List
 import threading
+
+# package imports
 from models.user import CachedUserInfo
 from models.auth import CachedTokenInfo
 

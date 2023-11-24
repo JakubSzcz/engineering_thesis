@@ -1,3 +1,11 @@
+# contains api administrative endpoints
+# prefix: /admin
+# authorization required: False
+# endpoints list:
+#   -GET /db_restart - restarts database instance to its original state (most of the time just erase data)
+#   -GET /data/prepare - basic preparation of the datasets to be inserted
+#   -GET /data/prepare/{db_type} - preparation of the datasets to be inserted specified for the db_type
+
 # library imports
 from fastapi import APIRouter, Header, Path
 from typing import Annotated
@@ -34,6 +42,8 @@ async def restart_db(
         sqlite: Annotated[bool | None, Header(title="SQLite Flag", description="Indicates to restart SQLite database",
                                               example="True")] = None
 ):
+
+    # send request to the proc api
     async with httpx.AsyncClient() as client:
         response = await client.get(
             url=fun.compose_url(PROC_IP, PROC_PORT) + "/proc/db_restart",
@@ -51,13 +61,13 @@ async def restart_db(
 @admin_router.get("/data/prepare", description="Basic preprocessing for data from IMDB database "
                                                "such as removing null values, appropriate for all db engines",
                   status_code=200)
-def restart_db_universal():
+def data_prepare_universal():
 
     print("Data preparation process started.")
     fun.process_and_save_data(title_episodes_path, title_episodes_path_url, "te")
     print("1/3")
 
-    fun.process_and_save_data(title_basics_path, title_basics_path_url,"tb")
+    fun.process_and_save_data(title_basics_path, title_basics_path_url, "tb")
     print("2/3")
 
     fun.process_and_save_data(name_basics_path, name_basics_path_url, "nb")
@@ -69,7 +79,7 @@ def restart_db_universal():
 
 @admin_router.get("/data/prepare/{db_type}", description="Prepares data from IMDb's database to align with the "
                                                          "specific database.", status_code=200)
-def restart_db_specified(
+def data_prepare_specified(
         db_type: Annotated[str, Path()]
 ):
 
@@ -86,6 +96,5 @@ def restart_db_specified(
     fun.process_and_save_data(name_basics_path, name_basics_path_url, "nb", db_type)
     print("[INFO] Finished - name_basics")
     print("[INFO] Data preparation process finished.")
-    # fun.process_and_save_data(test_path, test_path_url, "tb", db_type)
 
     return {"message": f"Datasets for {db_type} prepared"}

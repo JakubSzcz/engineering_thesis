@@ -10,15 +10,16 @@ from routes.user import user_router
 from routes.queries import query_router
 from cache import Cache
 from config import *
+from models import openapi
 
 # ### variables ###
 cache = Cache()
 app = FastAPI(
     title="Experience API (EXP_API)",
-    description=exp_description,
+    description=openapi.exp_description,
     summary="The Experience microservice.",
     version="1.0",
-    openapi_tags=tags_metadata_exp_api
+    openapi_tags=openapi.tags_metadata_exp_api
 )
 
 # routers includes

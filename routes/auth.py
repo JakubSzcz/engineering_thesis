@@ -1,19 +1,28 @@
-# ### imports ####
+# contains authorization related endpoints and functions
+# prefix: /auth
+# authorization required: False
+# endpoints list:
+#   -/token - generates token for the provided user credentials
+# function list:
+#   -is_user_authenticated(token) - validates whether user with the provided token has been authorized
+
+# library imports
 from fastapi import APIRouter, Depends, HTTPException
 from typing import Annotated
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from datetime import datetime
-import httpx
 from jose import jwt, exceptions
 from pydantic import ValidationError
+import httpx
 
-from models import auth, openapi
+# packages imports
+from models import auth, openapi, http_custom_error
 from cache import Cache
-from utilities import functions
+from utilities import functions as fun
 from config import *
 
 # ### variables ####
-hash_context = functions.HashContext()
+hash_context = fun.HashContext()
 auth_router = APIRouter(
     prefix="/auth",
     tags=["Authorization"]
@@ -24,6 +33,12 @@ cache = Cache()
 
 # ### functions ####
 async def is_user_authenticated(token: Annotated[str, Depends(oauth2_scheme)]) -> bool:
+    # decodes provided token and validates whether it is valid and not expired
+    # params:
+    # @token - Dependency injection of the Bearer access token from oauth2_schema
+    # returns True if user is authenticated or False otherwise
+
+    # decode token
     try:
         jwt_payload = jwt.decode(
             token=token, key=JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM]
@@ -46,7 +61,7 @@ async def is_user_authenticated(token: Annotated[str, Depends(oauth2_scheme)]) -
 
 
 # ### endpoints###
-@auth_router.post("/token", description="Endpoints for creation of token", status_code=201,
+@auth_router.post("/token", description="Endpoints for creation process of the token", status_code=201,
                   response_description="Returns access token with its expiration time",
                   responses={
                     400: openapi.wrong_db_type_header,
@@ -55,13 +70,14 @@ async def is_user_authenticated(token: Annotated[str, Depends(oauth2_scheme)]) -
                     500: openapi.cannot_connect_to_proc_api
                   })
 async def get_token(form: Annotated[OAuth2PasswordRequestForm, Depends()]) -> auth.Token:
+    # gets injected the OAuth2 password form as dependency
+
     timestamp = datetime.utcnow()
     # check if user exist in database
     async with httpx.AsyncClient() as client:
         try:
-            # TODO signing request
             response = await client.get(
-                url=functions.compose_url(PROC_IP, PROC_PORT) + "/auth/user",
+                url=fun.compose_url(PROC_IP, PROC_PORT) + "/auth/user",
                 headers=httpx.Headers({
                     "user-username": form.username,
                     "user-password-plain": form.password,
@@ -69,15 +85,12 @@ async def get_token(form: Annotated[OAuth2PasswordRequestForm, Depends()]) -> au
                 })
             )
         except httpx.ConnectError:
-            raise HTTPException(
-                status_code=500,
-                detail="Cannot connect to the proc_api"
-            )
+            raise http_custom_error.cannot_connect_to_proc
 
     # handling errors
     if response.status_code != 200:
         raise HTTPException(
-            status_code=400,
+            status_code=response.status_code,
             detail=response.json()["detail"]
         )
 
@@ -97,8 +110,3 @@ async def get_token(form: Annotated[OAuth2PasswordRequestForm, Depends()]) -> au
             )
         else:
             return auth.Token(**response["token"])
-
-
-@auth_router.get("/test", dependencies=[Depends(is_user_authenticated)])
-def test_connection():
-    return "to access this endpoint you have to be authorized, and you are"

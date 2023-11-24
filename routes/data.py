@@ -1,3 +1,15 @@
+# contains data related operations and endpoints
+# prefix /data
+# authorization required: True
+# endpoints list:
+#   -GET /  - retrieves all records from specified database
+#   -GET /{table_name} - retrieves all records from the provided table for specified database
+#   -GET /{table_name}/{record_id} - retrieves record from the provided table for specified database by its record_id
+#   -POST / - creates new record for specified database
+#   -DELETE /{table_name}/{record_id} - deletes specified record from the database
+#   -PATCH /{table_name}/{record_id} - updates specified record from the database
+
+
 # libraries import
 from fastapi import APIRouter, Header, HTTPException, Body, Path, Depends
 from typing import Annotated
@@ -14,29 +26,27 @@ from routes.auth import is_user_authenticated
 data_router = APIRouter(
     prefix="/data",
     tags=["Data"],
+    dependencies=[Depends(is_user_authenticated)]
 )
-
-# ### functions ###
 
 
 # ### endpoints ###
 @data_router.post("", description="Inserting data to the desired database engine", status_code=201,
                   response_description="Basic information about the insertion such as database type or insertion time",
-                  dependencies=[Depends(is_user_authenticated)],
                   responses={
                     400: openapi.wrong_db_type_header,
                     422: openapi.non_data_provided,
                     460: openapi.record_duplication,
-                    500: openapi.cannot_connect_to_proc_api
+                    521: openapi.cannot_connect_to_proc_api
                   })
 async def insert_data_to_db(
         db_type: Annotated[str, Header(title="Database type", description="Select database you want to "
                                                                           "retrieve users info from:"
                                                                           " ['redis', 'mdb', 'psql', 'sqlite']",
                                        examples=['redis', 'mdb', 'psql', 'sqlite'])],
-        title_basics: Annotated[querry_db.InsertTitleBasic | None, Body()] = None,
-        name_basics: Annotated[querry_db.InsertNameBasic | None, Body()] = None,
-        title_episode: Annotated[querry_db.InsertTitleEpisode | None, Body()] = None
+        title_basics: Annotated[querry_db.InsertTitleBasic | None, Body(description="Resource detail")] = None,
+        name_basics: Annotated[querry_db.InsertNameBasic | None, Body(description="Resource detail")] = None,
+        title_episode: Annotated[querry_db.InsertTitleEpisode | None, Body(description="Resource detail")] = None
 ) -> querry_db.InsertResponses:
 
     start_time = datetime.utcnow()
@@ -91,12 +101,12 @@ async def insert_data_to_db(
 
 
 @data_router.delete("/{table_name}/{record_id}", status_code=200, description="Deleting data from database",
-                    response_description="Deletion confirmation", dependencies=[Depends(is_user_authenticated)],
+                    response_description="Deletion confirmation",
                     responses={
                         400: openapi.wrong_db_type_header,
                         404: openapi.no_such_record,
                         422: openapi.non_data_provided,
-                        500: openapi.cannot_connect_to_proc_api
+                        521: openapi.cannot_connect_to_proc_api
                     })
 async def delete_data(
     table_name: Annotated[str, Path(title="Table name", description="Name of table you want to perform operation on",
@@ -136,10 +146,11 @@ async def delete_data(
 
 
 @data_router.get("", status_code=200, description="Get all data from all tables contained in one database",
-                 response_description="Database record response", dependencies=[Depends(is_user_authenticated)],
+                 response_description="Database record response",
                  responses={
                      400: openapi.wrong_db_type_header,
-                     500: openapi.cannot_connect_to_proc_api
+                     404: openapi.no_such_record,
+                     521: openapi.cannot_connect_to_proc_api
                  })
 async def get_all_data(
     db_type: Annotated[str, Header(title="Database type", description="Select database you want to retrieve users "
@@ -179,11 +190,11 @@ async def get_all_data(
 
 
 @data_router.get("/{table_name}", status_code=200, description="Get data from specified table from the database",
-                 response_description="Database record response", dependencies=[Depends(is_user_authenticated)],
+                 response_description="Database record response",
                  responses={
                         400: openapi.wrong_db_type_header,
                         404: openapi.no_such_record,
-                        500: openapi.cannot_connect_to_proc_api
+                        521: openapi.cannot_connect_to_proc_api
                     })
 async def get_table_data(
     db_type: Annotated[str, Header(title="Database type", description="Select database you want to retrieve users "
@@ -225,13 +236,12 @@ async def get_table_data(
         raise http_custom_error.cannot_connect_to_proc
 
 
-@data_router.get("/{table_name}/{record_id}", status_code=200,
+@data_router.get("/{table_name}/{record_id}", status_code=200, response_description="Database record response",
                  description="Get specified record data from the table",
-                 response_description="Database record response", dependencies=[Depends(is_user_authenticated)],
                  responses={
                         400: openapi.wrong_db_type_header,
                         404: openapi.no_such_record,
-                        500: openapi.cannot_connect_to_proc_api
+                        521: openapi.cannot_connect_to_proc_api
                  })
 async def get_record_data(
     db_type: Annotated[str, Header(title="Database type", description="Select database you want to retrieve users "
@@ -279,12 +289,11 @@ async def get_record_data(
 
 @data_router.patch("/{table_name}/{record_id}", status_code=200,
                    description="Update specified record data in the table", response_description="Update confirmation",
-                   dependencies=[Depends(is_user_authenticated)],
                    responses={
                        400: openapi.wrong_db_type_header,
                        404: openapi.no_such_record,
                        422: openapi.non_data_provided,
-                       500: openapi.cannot_connect_to_proc_api
+                       521: openapi.cannot_connect_to_proc_api
                    })
 async def update_record_data(
     db_type: Annotated[str, Header(title="Database type", description="Select database you want to retrieve users "

@@ -1,6 +1,6 @@
-# Contains all functions used across whole project
+# contains universal functions used across whole project
 
-# imports
+# library imports
 from fastapi import HTTPException
 from passlib.context import CryptContext
 from datetime import datetime
