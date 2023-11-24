@@ -90,6 +90,15 @@ db_reset_500 = {
     "description": "There was unknown error while trying to reset databases."
 }
 
+query_executed = {
+    "content": {
+        "application/json": {
+            "example": {"message": '{"execution_time": 1.242,\n"query_description": string,\n"query_result": {}}'}
+        }
+    },
+    "description": "Query results and its execution time"
+}
+
 
 exp_description = """
 Experience API purpose is to handle all user related request and returns to users.

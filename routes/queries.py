@@ -13,7 +13,7 @@ import httpx
 
 # packages import
 from config import *
-from models import querry_db, http_custom_error
+from models import querry_db, http_custom_error, openapi
 from utilities import functions as fun
 from routes.auth import is_user_authenticated
 
@@ -33,7 +33,11 @@ async def predefined_query_get_info():
 
 
 @query_router.get("/{query_id}", status_code=200,
-                  description="Returns result of predefined query", response_description="Query result")
+                  description="Returns result of predefined query", response_description="Query result",
+                  responses={
+                      200: openapi.query_executed,
+                      521: openapi.cannot_connect_to_proc_api
+                  })
 async def predefined_query_get(
         db_type: Annotated[str, Header(title="Database type", examples=['redis', 'mdb', 'psql', 'sqlite'],
                                        description="Select database you want to retrieve users "
