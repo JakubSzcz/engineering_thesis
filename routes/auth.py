@@ -2,7 +2,7 @@
 # prefix: /auth
 # authorization required: False
 # endpoints list:
-#   -/token - generates token for the provided user credentials
+#   -GET /token - generates token for the provided user credentials
 # function list:
 #   -is_user_authenticated(token) - validates whether user with the provided token has been authorized
 

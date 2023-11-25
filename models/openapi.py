@@ -93,7 +93,7 @@ db_reset_500 = {
 query_executed = {
     "content": {
         "application/json": {
-            "example": {"message": '{"execution_time": 1.242,\n"query_description": string,\n"query_result": {}}'}
+            "example": {"execution_time": 1.242, "query_description": "test", "query_result": {}}
         }
     },
     "description": "Query results and its execution time"
