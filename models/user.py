@@ -1,15 +1,9 @@
-from enum import Enum
+# contains models of responses/requests connected with user related operations
+
+# library imports
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import List
-
-
-# DATABASE
-class DatabaseType(str, Enum):
-    REDIS = "redis",
-    PSQL = "psql",
-    MDB = "mdb"
-    SQLi = "sqlite"
 
 
 # RESPONSE

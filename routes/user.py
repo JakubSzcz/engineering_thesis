@@ -1,3 +1,13 @@
+# contains all user related endpoints and operations
+# prefix /users
+# authorization required: False
+# endpoints list:
+#   -GET / - retrieve user/users info
+#   -POST / - create new user
+#   -DELETE / - delete user instance
+# functions list:
+#   -generate_random_string() - generates random string, used for client_id and password creation
+
 # libraries imports
 from fastapi import APIRouter, HTTPException, Query, Depends
 from utilities import functions as fun
@@ -10,7 +20,7 @@ import random
 
 # packages imports
 from config import *
-from models import user, openapi
+from models import user, openapi, http_custom_error
 
 
 # ### variables ###
@@ -23,6 +33,7 @@ hash_context = fun.HashContext()
 
 # ### functions ###
 def generate_random_string():
+    # creates string that contains random alphanumeric characters
     character_set = string.ascii_letters + string.digits  # Alphanumeric characters
     random_string = ''.join(secrets.choice(character_set) for _ in range(25))
 
@@ -60,10 +71,7 @@ async def get_user(
                 )
         # no connection to the sys api handling
         except httpx.ConnectError:
-            raise HTTPException(
-                status_code=500,
-                detail="Cannot connect to the sys_api"
-            )
+            raise http_custom_error.cannot_connect_to_sys
 
         # handling errors
         if response.status_code != 200:
@@ -114,10 +122,8 @@ async def create_user(
             )
         # no connection to the sys api handling
         except httpx.ConnectError:
-            raise HTTPException(
-                status_code=500,
-                detail="Cannot connect to the sys_api"
-            )
+            raise http_custom_error.cannot_connect_to_sys
+
     # return response
     if response.status_code == 201:
         return user.CreateUserRes(username=username, password=password)
@@ -152,10 +158,8 @@ async def delete_user(
             )
         # no connection to the sys api handling
         except httpx.ConnectError:
-            raise HTTPException(
-                status_code=500,
-                detail="Cannot connect to the sys_api"
-            )
+            raise http_custom_error.cannot_connect_to_sys
+
     # hande response
     if response.status_code == 200:
         return {"message": "User deleted"}

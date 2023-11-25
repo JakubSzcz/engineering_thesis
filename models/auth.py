@@ -1,3 +1,6 @@
+# Contains request/responses models connected with authorization process
+
+# library imports
 from pydantic import BaseModel, Field
 from datetime import datetime
 
@@ -22,9 +25,3 @@ class UserAuthRes(BaseModel):
                          description="Authentication token", default=None)
     exist: bool = Field(example=True, description="Informs if user was found in the database")
     correct_pwd: bool = Field(example=True, description="Informs if password was correct or not", default=None)
-
-
-# REQUEST
-
-
-# DATABASE

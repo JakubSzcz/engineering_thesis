@@ -1,14 +1,24 @@
-# library imports
-import re
+# contains data processing endpoints
+# prefix: /proc
+# authorization required: False
+# endpoints list:
+#   -GET /db_restart - restart chosen database engin
+#   -GET /data - retrieve data from chosen database
+#   -POST /data - create new data instance
+#   -DELETE /data - deletes data resource from chosen database
+#   -PATCH /data - update data resource
+#   -GET /query - execute chosen query
 
+# library imports
 from fastapi import APIRouter, Header, HTTPException, Body, Query, Depends
 from typing import Annotated
 import httpx
 import asyncio
+import re
 
 # packages imports
 from utilities import functions as fun
-from models import querry_db
+from models import querry_db, http_custom_error, openapi
 from config import *
 
 
@@ -20,7 +30,12 @@ proc_router = APIRouter(
 
 
 # ### endpoints ###
-@proc_router.get("/db_restart", description="Endpoints for databases restart operation", status_code=200)
+@proc_router.get("/db_restart", description="Endpoints for databases restart operation", status_code=200,
+                 responses={
+                     200: openapi.restart_success,
+                     400: openapi.no_header,
+                     500: openapi.restart_fail
+                 })
 async def restart_db(
         redis: Annotated[bool, Header(title="Redis Flag", description="Indicates to restart Redis database",
                                       example="True")],
@@ -31,6 +46,7 @@ async def restart_db(
         sqlite: Annotated[bool, Header(title="SQLite Flag", description="Indicates to restart SQLite database",
                                        example="True")]
 ):
+
     # verify which db_type has been provided
     db_to_send = []
     if redis:
@@ -46,10 +62,7 @@ async def restart_db(
         db_to_send.append("sqlite")
 
     if len(db_to_send) == 0:
-        raise HTTPException(
-            status_code=400,
-            detail="No database header provided"
-        )
+        raise http_custom_error.no_header
 
     # collect parallel responses
     responses = await asyncio.gather(*(fun.send_async_request_restart_db(db_name) for db_name in db_to_send))
@@ -70,7 +83,7 @@ async def restart_db(
 
 
 @proc_router.post("/data", description="Insert data to the provided database", status_code=201)
-async def insert(
+async def insert_data(
     db_type: Annotated[str, Depends(fun.validate_db_type)],
     correlation_id: Annotated[str, Header(title="Request correlation identifier",
                                           description="Identifies every unique data insertion request",
@@ -82,10 +95,7 @@ async def insert(
 
     # ensure body is correct
     if title_basics is None and name_basics is None and title_episode is None:
-        raise HTTPException(
-            status_code=400,
-            detail="Required body content not provided."
-        )
+        raise http_custom_error.no_body_provided
 
     data = {}
     if title_basics is not None:
@@ -115,12 +125,17 @@ async def insert(
         )
 
 
-@proc_router.delete("/data")
+@proc_router.delete("/data", status_code=200, description="Deletes chosen resource from specif db and its table",
+                    responses={
+                        200: openapi.data_delete_success,
+                        521: openapi.cannot_connect_to_sys_api
+                    })
 async def delete_data(
         db_type: Annotated[str, Depends(fun.validate_db_type)],
         table_name: Annotated[str, Depends(fun.validate_table_name)],
         record_id: Annotated[str, Depends(fun.validate_record_id)]
 ):
+
     # validate table name
     fun.validate_table_name(table_name)
 
@@ -142,19 +157,21 @@ async def delete_data(
             )
     # handel connection error
     except httpx.ConnectError:
-        raise HTTPException(
-            status_code=500,
-            detail="Cannot connect to the sys_api"
-        )
+        raise http_custom_error.cannot_connect_to_sys
 
 
-@proc_router.get("/data")
+@proc_router.get("/data", status_code=200, description="Accordingly to the filters, returns desired data",
+                 responses={
+                     200: openapi.data_get_success,
+                     521: openapi.cannot_connect_to_sys_api
+                 })
 async def get_data(
         db_type: Annotated[str, Depends(fun.validate_db_type)],
         filters: Annotated[bool, Query(title="Filters indicator flag", examples=["True"])],
         table_name: Annotated[str | None, Query(title="Table name", examples=["title_basics"])] = None,
         record_id: Annotated[str | None, Query(title="Record identifier", examples=["tt0000004"])] = None
 ):
+
     # route request to the appropriate sys endpoint
     try:
         # retrieved filters
@@ -187,10 +204,8 @@ async def get_data(
 
     # handel connection error
     except httpx.ConnectError:
-        raise HTTPException(
-            status_code=500,
-            detail="Cannot connect to the sys_api"
-        )
+        raise http_custom_error.cannot_connect_to_sys
+
     # handle responses
     if response.status_code == 200 and not filters:
         return {"data": {
@@ -198,6 +213,7 @@ async def get_data(
             "title_episodes": response.json()["data"]["title_episodes"],
             "name_basics": response.json()["data"]["name_basics"]
         }}
+
     elif response.status_code == 200 and filters:
         return {"data": response.json()["data"]}
     else:
@@ -208,7 +224,7 @@ async def get_data(
 
 
 @proc_router.patch("/data", status_code=200, description="Update specified record data in the table",
-                   response_description="Update confirmation")
+                   response_description="Update confirmation", responses={200: openapi.data_patch_success})
 async def update_data(
     db_type: Annotated[str, Depends(fun.validate_db_type)],
     table_name: Annotated[str, Depends(fun.validate_table_name)],
@@ -248,18 +264,20 @@ async def update_data(
 
 
 @proc_router.get("/query", status_code=200, description="Perform query operation on provided database",
-                 response_description="Query result")
+                 response_description="Query result",
+                 responses={
+                     404: openapi.no_such_query
+                 })
 async def execute_query(
         db_type: Annotated[str, Depends(fun.validate_db_type)],
         query_id: Annotated[str, Query(title="Query identifier", description="Identifies which query to perform",
                                        example="query_1")]
 ):
+
     # validate query
     if not re.match(r'^query_\d+$', query_id):
-        raise HTTPException(
-            status_code=404,
-            detail="No such query_id. Possible queries ids are: ['query_1', 'query_2', 'query_1']"
-        )
+        raise http_custom_error.no_such_query
+
     else:
         # remove 'query' prefix
         query_id = int(query_id[6:])

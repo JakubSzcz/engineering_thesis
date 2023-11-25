@@ -1,15 +1,23 @@
+# contains authorization related endpoints and functions
+# prefix: /auth
+# authorization required: False
+# endpoints list:
+#   -GET /user - check if user exists and if so, generates token for its credentials and expiration time
+# function list:
+#   -creat_access_token(sub, requested_time, exp_delta) - generates token for the provided user credentials
+
 # libraries imports
 from fastapi import APIRouter, Header, HTTPException
-from utilities import functions as fun
 from typing import Annotated, Any
 from datetime import timedelta, datetime
-import httpx
 from jose import jwt
+import httpx
 
 
 # packages imports
 from config import *
-from models import auth, openapi
+from utilities import functions as fun
+from models import auth, openapi, http_custom_error
 
 # ### variables ###
 auth_router = APIRouter(
@@ -22,8 +30,13 @@ hash_context = fun.HashContext()
 
 
 # ### functions ###
-# function to generate jwt token
 def creat_access_token(sub: str | Any, requested_time: datetime, exp_delta: int = None) -> (str, datetime):
+    # function to generate jwt token
+    # @params:
+    # sub - client id who requested token
+    # datetime - time when token has been requested
+    # exp_delta - [OPTIONAL] custom delta time for how long token should be valid, if not provided,
+    #             default value will be use
 
     if exp_delta is None:
         expiry_time = requested_time + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -37,6 +50,7 @@ def creat_access_token(sub: str | Any, requested_time: datetime, exp_delta: int 
 
     }
     jwt_token = jwt.encode(jwt_payload_to_encode, JWT_SECRET_KEY, JWT_ALGORITHM)
+
     return jwt_token, expiry_time
 
 
@@ -46,9 +60,8 @@ def creat_access_token(sub: str | Any, requested_time: datetime, exp_delta: int 
                                       "If both of this are true, it returns access token",
                  responses={
                      404: openapi.no_username_found,
-                     500: openapi.cannot_connect_to_sys_api
-                 }
-                 )
+                     521: openapi.cannot_connect_to_sys_api
+                 })
 async def user_exists(
         user_username: Annotated[str, Header(example="abcdefgh12345678", min_length=16, max_length=32,
                                              title="Client username",
@@ -89,10 +102,8 @@ async def user_exists(
             )
         except httpx.ConnectError:
             print("[ERROR] Cannot connect to the sys_api")
-            raise HTTPException(
-                status_code=500,
-                detail="Cannot connect to the sys_api"
-            )
+            raise http_custom_error.cannot_connect_to_sys
+
         # if users exists, verifies its password
         if bool(response.json()["exist"]):
             if hash_context.verify(user_password_plain, response.json()["password_hashed"]):
