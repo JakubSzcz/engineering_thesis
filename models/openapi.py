@@ -84,7 +84,7 @@ no_such_record = {
 get_all_data = {
     "content": {
         "application/json": {
-            "example": {"message": '{"data": {\n"title_basics": {},\n title_episodes": {},\n"name_basics": {}\n}}'}
+            "example": {"data": {"title_basics": {}, "title_episodes": {}, "name_basics": {}}}
         }
     },
     "description": "All data from database"
@@ -93,7 +93,7 @@ get_all_data = {
 get_data = {
     "content": {
         "application/json": {
-            "example": {"message": '{"data": {}'}
+            "example": {"data": {}}
         }
     },
     "description": "Data from database"
