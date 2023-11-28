@@ -464,7 +464,7 @@ async def get_record_data_redis(
         if len(db_response.docs) == 0:
             raise http_custom_error.no_such_record
         else:
-            db_response = db_response.docs[0]
+            db_response = db_response.docs[0].__dict__
     except redis.exceptions.ConnectionError:
         print("[ERROR] Can not connect to the database")
         raise http_custom_error.cannot_connect_to_db
