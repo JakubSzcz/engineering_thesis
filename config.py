@@ -62,3 +62,5 @@ models_fields = {
     "name_basics": "primaryName, birthYear, deathYear, primaryProfession, knownForTitles",
     "title_episodes": "parentTconst, seasonNumber, episodeNumber"
 }
+
+HEAVY_REQUEST_TIMEOUT = 100  # seconds

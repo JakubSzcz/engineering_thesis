@@ -192,14 +192,16 @@ async def get_data(
                 # send request to the sys_api about table related resource
                 async with httpx.AsyncClient() as client:
                     response = await client.get(
-                        url=fun.compose_url(SYS_IP, SYS_PORT) + f"/{db_type}/data/{table_name}"
+                        url=fun.compose_url(SYS_IP, SYS_PORT) + f"/{db_type}/data/{table_name}",
+                        timeout=HEAVY_REQUEST_TIMEOUT
                     )
         # all resource handling
         else:
             # send request to the sys_api about all resources
             async with httpx.AsyncClient() as client:
                 response = await client.get(
-                    url=fun.compose_url(SYS_IP, SYS_PORT) + f"/{db_type}/data"
+                    url=fun.compose_url(SYS_IP, SYS_PORT) + f"/{db_type}/data",
+                    timeout=HEAVY_REQUEST_TIMEOUT
                 )
 
     # handel connection error
