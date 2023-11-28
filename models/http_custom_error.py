@@ -10,7 +10,7 @@ invalid_sql_syntax = HTTPException(
 
 record_duplicated = HTTPException(
             status_code=460,
-            detail="Such record already exists in the database and violets unique constraints."
+            detail="Such record already exists in the database so not to violet unique constraints can't be inserted."
 )
 
 cannot_connect_to_db = HTTPException(

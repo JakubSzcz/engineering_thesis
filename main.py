@@ -28,4 +28,4 @@ app.include_router(sqlite.sqli_router)
 # launch server
 if __name__ == "__main__":
     print("[INFO] System API has successfully started.")
-    uvicorn.run("main:app", host="127.0.0.1", port=8082, reload=True)
+    uvicorn.run("main:app", host=SYS_SERV, port=int(SYS_PORT), reload=True)

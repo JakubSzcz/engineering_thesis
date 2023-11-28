@@ -58,6 +58,22 @@ class PostgreSQL:
         self.conn = None
         self.cur = None
 
+    # create database if not exists:
+    def create_database(self):
+        self.conn = psycopg2.connect(
+            host=config.PG_HOST,
+            port=config.PG_PORT,
+            user=config.PG_USR,
+            password=config.PG_PSW
+        )
+        self.conn.autocommit = True
+        self.cur = self.conn.cursor()
+        self.execute(f"SELECT 1 FROM pg_catalog.pg_database WHERE datname = '{config.PG_DB}'")
+        if not self.get_query_results():
+            self.execute(f"CREATE DATABASE {config.PG_DB}")
+        self.conn.autocommit = False
+        self.commit()
+
 
 class ConnectionAlreadyEstablishedException(Exception):
     pass

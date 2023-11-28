@@ -312,7 +312,7 @@ async def insert_data_redis(
                 # insert data
                 r.hset(name=("name_basics:" + str(int(datetime.utcnow().timestamp()) +
                                                   random.randint(1, 9999))), mapping={
-                        "tconst": name_basics.nconst, "primaryName": name_basics.primaryName,
+                        "nconst": name_basics.nconst, "primaryName": name_basics.primaryName,
                         "birthYear": int(name_basics.birthYear), "deathYear": int(name_basics.deathYear),
                         "primaryProfession": name_basics.primaryProfession, "knownForTitles": name_basics.knownForTitles
                 })
@@ -442,7 +442,7 @@ async def get_record_data_redis(
 
     # connect to the database
     try:
-
+        """
         data_list = (indexes[table_name].aggregate(AggregateRequest(f"@tconst:{record_id}").load().group_by(
             querry_db.redis_models_fields_tuple[table_name])).rows)
 
@@ -456,10 +456,22 @@ async def get_record_data_redis(
                 data[record[i]] = int(record[i + 1])
             else:
                 data[record[i]] = record[i + 1]
+        """
 
+        indicator = "nconst" if table_name == "name_basics" else "tconst"
+        db_response = indexes[table_name].search(redisQuery(f"@{indicator}:{record_id}"))
+
+        if len(db_response.docs) == 0:
+            raise http_custom_error.no_such_record
+        else:
+            db_response = db_response.docs[0]
     except redis.exceptions.ConnectionError:
         print("[ERROR] Can not connect to the database")
         raise http_custom_error.cannot_connect_to_db
+
+    # data mapping
+    keys_to_remove = ["id", "payload"]
+    data = {key: value for key, value in db_response.items() if key not in keys_to_remove}
 
     return {"data": data}
 

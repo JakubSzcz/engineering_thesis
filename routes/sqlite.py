@@ -35,7 +35,7 @@ sqli_router = APIRouter(
 )
 # connecting to the database file and create tables
 db = SQLite()
-if "sqlitedb.db" not in os.listdir("./SQL_engines"):
+if "sqlitedb.db" not in os.listdir("/app"):
     db.connect()
     # create users database
     db.execute(tables_create_sqli["users"])

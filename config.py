@@ -1,9 +1,12 @@
 from redis.commands.search.field import TextField, NumericField, TagField
 
 # LINKS
-EXP_IP = "localhost"
-PROC_IP = "localhost"
-SYS_IP = "localhost"
+EXP_IP = "exp_api"
+PROC_IP = "proc_api"
+SYS_IP = "sys_api"
+POSTGRES_IP = "postgresdb_clean"
+MONGO_IP = "mongodb_clean"
+REDIS_IP = "redisdb_clean"
 
 # PORTS
 EXP_PORT = "8080"
@@ -11,9 +14,9 @@ PROC_PORT = "8081"
 SYS_PORT = "8082"
 
 # SERVER LISTEN
-EXP_SERV = "localhost"
-PROC_SERV = "localhost"
-SYS_SERV = "localhost"
+EXP_SERV = "0.0.0.0"
+PROC_SERV = "0.0.0.0"
+SYS_SERV = "0.0.0.0"
 
 # SECRET
 EXP_SEC = ""
@@ -22,20 +25,20 @@ SYS_SEC = ""
 
 # POSTGRES
 PG_PSW = "postgres"
-PG_PORT = "2020"
+PG_PORT = 5432
 PG_USR = "postgres"
-PG_HOST = "localhost"
+PG_HOST = POSTGRES_IP
 PG_DB = "postgres_db"
 
 # MONGODB
-MDB_PORT = 2021
-MDB_HOST = "localhost"
-MDB_DB = "mong_db"
+MDB_PORT = 27017
+MDB_HOST = MONGO_IP
+MDB_DB = "mongo_db"
 MDB_PSW = "mongo"
 
 # REDIS
-REDIS_PORT = 2022
-REDIS_HOST = "localhost"
+REDIS_PORT = 6379
+REDIS_HOST = REDIS_IP
 REDIS_DB = "redis"  # not used
 REDIS_PSW = "redis"  # not used
 

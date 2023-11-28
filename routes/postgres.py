@@ -14,6 +14,8 @@
 #   -DELETE /data - deletes specific record from postgres
 #   -PATCH /data/{table_name}/{record_id} - updates specific record in postgres
 #   -GET /queries/{query_id} - execute query in postgres
+# functions list:
+#   -create_tables() - creates all required tables
 
 # libraries imports
 from fastapi import APIRouter, Header, HTTPException, Query, Body, Path
@@ -31,8 +33,34 @@ psql_router = APIRouter(
     prefix="/psql",
     tags=["PostgreSQL"]
 )
+
 # database instance
 db = PostgreSQL()
+# database initialization
+db.create_database()
+
+
+# ### functions ###
+def create_tables():
+    # creates all required tables for postgres
+    # check if data tables exists and restart it if not
+    db.connect(True)
+    for table_name in tables_names:
+        db.execute(f"SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = '{table_name}');")
+        if not db.get_query_results()[0]["exists"]:
+            # create table
+            db.execute(tables_create_psql[table_name])
+    db.commit()
+    db.connect(True)
+    # users table initialization
+    db.execute("SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'users');")
+    if not db.get_query_results()[0]["exists"]:
+        db.execute("CREATE TABLE users (user_id SERIAL PRIMARY KEY, username TEXT UNIQUE, password_hashed TEXT, "
+                   "is_admin BOOLEAN DEFAULT false, creation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP);")
+    db.commit()
+
+
+create_tables()
 
 
 # ### endpoints ###
@@ -239,15 +267,10 @@ async def insert_data_postgres(
     title_episode: Annotated[querry_db.InsertTitleEpisode | None, Body()] = None,
 ):
 
-    # if none data has been provided, rais an error
-    if title_basics is None and name_basics is None and title_episode is None:
-        raise http_custom_error.lack_of_data
-
     # check which data has been provided
     try:
         db.connect(True)
         # insert data if provided
-
         if title_basics is not None:
             db.execute(
                 tables_insert_psql["title_basics"].format(
@@ -277,7 +300,6 @@ async def insert_data_postgres(
                 )
             )
         db.commit()
-
     # syntax error handling
     except psycopg2.errors.SyntaxError as e:
         print("[ERROR] There has been a syntax error while inserting record into db")
