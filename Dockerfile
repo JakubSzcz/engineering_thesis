@@ -19,6 +19,8 @@ WORKDIR /app
 # Create a non-privileged user that the app will run under.
 # See https://docs.docker.com/develop/develop-images/dockerfile_best-practices/#user
 ARG UID=10001
+
+RUN apt-get update && apt-get install -y iputils-ping
 RUN adduser \
     --disabled-password \
     --gecos "" \
@@ -27,6 +29,7 @@ RUN adduser \
     --no-create-home \
     --uid "${UID}" \
     appuser
+
 
 # Download dependencies as a separate step to take advantage of Docker's caching.
 # Leverage a cache mount to /root/.cache/pip to speed up subsequent builds.
@@ -42,8 +45,7 @@ USER appuser
 # Copy the source code into the container.
 COPY . .
 
-# Expose the port that the application listens on.
-EXPOSE 8080
+EXPOSE 8081
 
 # Run the application.
 CMD python main.py

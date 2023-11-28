@@ -97,11 +97,11 @@ async def create_user(
 
     # generate credentials accordingly to the database type
     username = generate_random_string()
-    if db_type == "PSQL":
+    if db_type == "psql":
         username = username[:-1] + str(random.randint(0, 2))
-    elif db_type == "MDB":
+    elif db_type == "mdb":
         username = username[:-1] + str(random.randint(3, 5))
-    elif db_type == "REDIS":
+    elif db_type == "redis":
         username = username[:-1] + str(random.randint(6, 7))
     else:
         username = username[:-1] + str(random.randint(8, 9))
