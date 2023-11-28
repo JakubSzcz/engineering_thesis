@@ -36,3 +36,5 @@ title_episodes_path = "../../bazy/title.episode.tsv/data.tsv"
 title_episodes_path_url = "../../bazy/title.episode.tsv/data_url_{db_type}.{file_ext}"
 test_path = "../../bazy/title.basics.tsv/redis_test.tsv"
 test_path_url = "../../bazy/title.basics.tsv/test_url_{db_type}.{file_ext}"
+
+HEAVY_REQUEST_TIMEOUT = 100  # seconds

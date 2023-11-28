@@ -168,7 +168,8 @@ async def get_all_data(
                 }),
                 params=httpx.QueryParams({
                     "filters": "False"
-                })
+                }),
+                timeout=HEAVY_REQUEST_TIMEOUT
             )
 
         # handle responses
@@ -216,7 +217,8 @@ async def get_table_data(
                 params=httpx.QueryParams({
                     "filters": "True",
                     "table_name": table_name
-                })
+                }),
+                timeout=HEAVY_REQUEST_TIMEOUT
             )
 
         # handle responses
