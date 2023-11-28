@@ -40,7 +40,7 @@ async def retrieve_user(
         username: Annotated[str, Path(title="User id", description="User username unique char sequence",
                                       example="test_test_test_test")]
 ) -> user.UserResponse:
-
+    print(fun.compose_url(PROC_IP, PROC_PORT) + "/users?username=" + username)
     # send request to the proc_api
     async with httpx.AsyncClient() as client:
         try:
@@ -48,7 +48,8 @@ async def retrieve_user(
                 url=fun.compose_url(PROC_IP, PROC_PORT) + "/users?username=" + username,
                 headers=httpx.Headers({
                     "db-type": db_type,
-                })
+                }),
+                timeout=10
             )
         except httpx.ConnectError:
             raise HTTPException(

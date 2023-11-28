@@ -1,7 +1,10 @@
 # LINKS
-EXP_IP = "localhost"
-PROC_IP = "localhost"
-SYS_IP = "localhost"
+EXP_IP = "exp_api"
+PROC_IP = "proc_api"
+SYS_IP = "sys_api"
+POSTGRES_IP = "postgresdb"
+MONGO_IP = "mongodb"
+REDIS_IP = "redisdb"
 
 # PORTS
 EXP_PORT = "8080"
@@ -9,19 +12,14 @@ PROC_PORT = "8081"
 SYS_PORT = "8082"
 
 # SERVER LISTEN
-EXP_SERV = "localhost"
-PROC_SERV = "localhost"
-SYS_SERV = "localhost"
+EXP_SERV = "0.0.0.0"
+PROC_SERV = "0.0.0.0"
+SYS_SERV = "0.0.0.0"
 
 # SECRET
 EXP_SEC = ""
 PROC_SEC = ""
 SYS_SEC = ""
-
-# POSTGRES
-PG_PSW = "@mM&UmSZ}}3F99A8"
-PG_PORT = "2020"
-PG_USR = "postgres"
 
 # JWT
 ACCESS_TOKEN_EXPIRE_MINUTES = 360  # 30 minutes

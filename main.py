@@ -33,4 +33,4 @@ app.include_router(query_router)
 # launch server
 if __name__ == "__main__":
     print("[INFO] Experience API started successfully.")
-    uvicorn.run("main:app", host=EXP_IP, port=int(EXP_PORT), reload=True)
+    uvicorn.run("main:app", host=EXP_SERV, port=int(EXP_PORT), reload=True)

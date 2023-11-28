@@ -145,7 +145,7 @@ def process_and_save_data(input_path: str, output_path: str, table_name: str, db
     print("Saving output file")
     # save output file
     if db_type is None:
-        data.to_csv(output_path.format(db_type="", file_ext="tsv")[:-1], sep='\t', index=False)
+        data.to_csv(output_path.format(db_type="", file_ext="tsv"), sep='\t', index=False)
     else:
         if db_type == 'mdb':
             data.to_json(output_path.format(db_type=db_type, file_ext="json"), orient='records', lines=True)
