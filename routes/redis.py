@@ -325,8 +325,7 @@ async def insert_data_redis(
             db_response = indexes["title_episodes"].search(redisQuery(f"@tconst:{title_episode.tconst}"))
             if len(db_response.docs) == 0:
                 # insert data
-                r.hset(name=("title_episodes:" + str(int(datetime.utcnow().timestamp()) +
-                                                     random.randint(1, 9999))), mapping={
+                r.hset(name=("title_episodes:" + title_episode.tconst), mapping={
                         "tconst": title_episode.tconst, "parentTconst": title_episode.parentTconst,
                         "seasonNumber": int(title_episode.seasonNumber),
                         "episodeNumber": int(title_episode.episodeNumber)
