@@ -397,8 +397,9 @@ async def execute_query_mdb(
 ):
 
     try:
-        # execute query
-        data = title_basics_collection.aggregate(querry_db.queries["mdb"][query_id-1])
+        data = {}
+        if int(query_id) == 1:
+            data = name_basics_collection.aggregate(querry_db.queries["mdb"][query_id-1])
 
     # cannot connect to db
     except ServerSelectionTimeoutError:

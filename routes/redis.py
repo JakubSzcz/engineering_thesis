@@ -18,9 +18,11 @@
 from datetime import datetime
 from fastapi import APIRouter, Header, HTTPException, Query, Body, Path
 from typing import Annotated, List
+
+from redis.commands.search import reducers
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from redis.commands.search.query import Query as redisQuery
-from redis.commands.search.aggregation import AggregateRequest
+from redis.commands.search.aggregation import AggregateRequest, Asc, Desc
 import redis
 import random
 import re
@@ -499,3 +501,65 @@ async def update_record_redis(
     except redis.exceptions.ConnectionError:
         print("[ERROR] Can not connect to the database")
         raise http_custom_error.cannot_connect_to_db
+
+
+# QUERIES
+@redis_router.get("/queries/{query_id}", status_code=200, description="Perform query operation on redis",
+                response_description="Query result",
+                responses={
+                    521: openapi.cannot_connect_to_db
+                })
+async def execute_query_redis(
+        query_id: Annotated[int, Path(title="Query identifier", description="Query id you want to execute",
+                                      example="1")]
+):
+    try:
+        data = {}
+        # avg age
+        if int(query_id) == 1:
+            died_request = (AggregateRequest("*").load("@birthYear", "@deathYear").
+                            filter("@birthYear > 0 && @deathYear > 0").apply(age="@deathYear - @birthYear"))
+            alive_request = (AggregateRequest("*").load("@birthYear", "@deathYear").
+                             filter("@birthYear > 0 && @deathYear < 0").apply(age="2023 - @birthYear"))
+
+            age_list_of_list = (indexes["name_basics"].aggregate(died_request).rows +
+                                indexes["name_basics"].aggregate(alive_request).rows)
+            age_sum = 0
+            for record in age_list_of_list:
+                age_sum = age_sum + int(record[5])
+            data = {"avg_age": round(age_sum / len(age_list_of_list), 2)}
+        elif int(query_id) == 2:
+            request_tb = (AggregateRequest("*").load("@tconst", "@primaryTitle", "@startYear").
+                          filter("@startYear > 1950"))
+            request_te = ((AggregateRequest("*").load("@parentTconst", "@seasonNumber").
+                          filter("@seasonNumber < 800").sort_by(Desc("@seasonNumber"), max=100)).
+                          group_by("@parentTconst", reducers.max("@seasonNumber").alias("max_season")))
+            tb_list = indexes["title_basics"].aggregate(request_tb).rows
+            te_list = indexes["title_episodes"].aggregate(request_te).rows
+
+            # match records based on thier tconst
+            matched_records = []
+            for te_record in te_list:
+                for tb_record in tb_list:
+                    if te_record[1] == tb_record[1]:
+                        matched_records.append({"primaryTitle": tb_record[4], "startYear": tb_record[5],
+                                                "maxSeasons": te_record[3]})
+                        break
+
+            # sort by maxSeasons
+            sorted_data = sorted(matched_records, key=lambda x: x["maxSeasons"], reverse=True)
+
+            # return 10 first records
+            if len(sorted_data) >= 10:
+                data = sorted_data[:9]
+            else:
+                data = sorted_data
+
+    except redis.exceptions.ConnectionError:
+        print("[ERROR] Can not connect to the database")
+        raise http_custom_error.cannot_connect_to_db
+
+    if not data:
+        return {"message": "Query response was empty. Consider updating database"}
+    else:
+        return data

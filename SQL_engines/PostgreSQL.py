@@ -58,7 +58,7 @@ class PostgreSQL:
         self.conn = None
         self.cur = None
 
-    # create database if not exists:
+    # create database if don't exists:
     def create_database(self):
         self.conn = psycopg2.connect(
             host=config.PG_HOST,

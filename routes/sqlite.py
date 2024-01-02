@@ -454,20 +454,30 @@ async def execute_query_sqlite(
         query_id: Annotated[int, Path(title="Query identifier", description="Query id you want to execute",
                                       example="1")]
 ):
-
     try:
-        # execute query
-        db.connect()
-        db.execute(querry_db.queries["sqlite"][query_id-1])
-        data = db.get_query_results()
-        db.commit()
-
+        if int(query_id) == 1:
+            # execute query
+            db.connect()
+            db.execute(querry_db.queries["sqlite"][query_id-1]["dead"])
+            avg_age_dead = db.get_query_results()
+            db.execute(querry_db.queries["sqlite"][query_id - 1]["alive"])
+            avg_age_alive = db.get_query_results()
+            data = {"avg_age": round((int(avg_age_dead[0]["age"])+int(avg_age_alive[0]["age"]))/2, 2)}
+            db.commit()
+            if not data:
+                return {"message": "Query response was empty. Consider updating database"}
+            else:
+                return list(data)
+        else:
+            db.connect()
+            data = db.get_query_results()
+            db.commit()
+            if not data:
+                return {"message": "Query response was empty. Consider updating database"}
+            else:
+                return list(data)
     # cannot connect to db
     except sqlite3.Error:
         print("[ERROR] Can not connect to the database")
         raise http_custom_error.cannot_connect_to_db
 
-    if not data:
-        return {"message": "Query response was empty. Consider updating database"}
-    else:
-        return data
