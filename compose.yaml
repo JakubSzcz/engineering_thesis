@@ -1,0 +1,53 @@
+version: '3'
+
+services:
+  exp_api:
+    container_name: exp_api
+    build: .\exp_api\engineering_thesis
+    restart: always
+    ports:
+      - "8080:8080"
+    command: python main.py
+    depends_on:
+      - proc_api
+
+  proc_api:
+    container_name: proc_api
+    build: .\proc_api\engineering_thesis
+    restart: always
+    ports:
+      - "8081:8081"
+    command: python main.py
+    depends_on:
+      - sys_api
+  redisdb_clean:
+    container_name: redisdb_clean
+    image: redis/redis-stack
+    restart: always
+    ports:
+      - "6379:6379"
+  postgresdb_clean:
+    container_name: postgresdb_clean
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+  mongodb_clean:
+    container_name: mongodb_clean
+    image: mongo
+    restart: always
+    ports:
+      - "27017:27017"
+  sys_api:
+    container_name: sys_api
+    build: .\sys_api\engineering_thesis
+    restart: always
+    ports:
+      - "8082:8082"
+    command: python main.py
+    depends_on:
+      - mongodb_clean
+      - redisdb_clean
+      - postgresdb_clean
